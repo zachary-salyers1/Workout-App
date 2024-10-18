@@ -25,6 +25,7 @@ export function WorkoutPlanGeneratorComponent() {
   })
   const [error, setError] = useState<string | null>(null)
   const [notification, setNotification] = useState<string | null>(null)
+  const [startDay, setStartDay] = useState<string>("Monday")
 
   const handleAdditionalInfoChange = (field: string, value: string) => {
     setAdditionalInfo((prev) => ({ ...prev, [field]: value }))
@@ -36,6 +37,7 @@ export function WorkoutPlanGeneratorComponent() {
     // Combine user profile, preferences, and additional info
     const planRequest = {
       ...userProfile,
+      startDay,
       duration: duration[0], // Assuming duration is an array with a single value
       includeWarmup,
       includeCooldown,
@@ -75,42 +77,42 @@ export function WorkoutPlanGeneratorComponent() {
     if (!workoutPlan || !workoutPlan.detailedWorkoutPlan) return null;
 
     return (
-      <Tabs defaultValue={Object.keys(workoutPlan.detailedWorkoutPlan)[0]}>
-        <TabsList className="grid grid-cols-7 mb-4">
-          {Object.keys(workoutPlan.detailedWorkoutPlan).map((day) => (
-            <TabsTrigger key={day} value={day} className="text-sm">
-              {day}
-            </TabsTrigger>
-          ))}
-        </TabsList>
+      <div className="space-y-4">
         {Object.entries(workoutPlan.detailedWorkoutPlan).map(([day, plan]) => (
-          <TabsContent key={day} value={day}>
-            <h3 className="text-lg font-semibold mb-4">{day}'s Workout</h3>
-            <div className="overflow-x-auto">
-              <table className="w-full border-collapse">
-                <thead>
-                  <tr className="bg-gray-100">
-                    <th className="p-2 text-left border">Exercise</th>
-                    <th className="p-2 text-center border">Sets</th>
-                    <th className="p-2 text-center border">Reps</th>
-                    <th className="p-2 text-center border">Rest</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {plan.exercises.map((exercise, index) => (
-                    <tr key={index} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                      <td className="p-2 border">{exercise.name}</td>
-                      <td className="p-2 text-center border">{exercise.sets}</td>
-                      <td className="p-2 text-center border">{exercise.reps}</td>
-                      <td className="p-2 text-center border">{exercise.rest}s</td>
+          <Card key={day}>
+            <CardHeader>
+              <CardTitle>{day}'s Workout</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr>
+                      <th className="text-left p-2">Exercise</th>
+                      <th className="text-center p-2">Sets</th>
+                      <th className="text-center p-2">Reps</th>
+                      <th className="text-center p-2">Rest</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </TabsContent>
+                  </thead>
+                  <tbody>
+                    {plan.exercises.map((exercise, index) => (
+                      <tr key={index} className={index % 2 === 0 ? 'bg-muted/50' : ''}>
+                        <td className="p-2">
+                          <div className="font-medium">{exercise.name}</div>
+                          <div className="text-sm text-muted-foreground">{exercise.description}</div>
+                        </td>
+                        <td className="text-center p-2">{exercise.sets}</td>
+                        <td className="text-center p-2">{exercise.reps}</td>
+                        <td className="text-center p-2">{exercise.rest}s</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </CardContent>
+          </Card>
         ))}
-      </Tabs>
+      </div>
     );
   };
 
@@ -127,7 +129,7 @@ export function WorkoutPlanGeneratorComponent() {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       {notification && (
         <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative" role="alert">
           <span className="block sm:inline">{notification}</span>
@@ -140,10 +142,9 @@ export function WorkoutPlanGeneratorComponent() {
       )}
       <Card>
         <CardHeader>
-          <CardTitle>Customize Your Plan</CardTitle>
-          <CardDescription>Adjust settings to fit your needs</CardDescription>
+          <CardTitle>Generate Your Workout Plan</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent>
           <div className="space-y-2">
             <Label>Workout Duration (minutes)</Label>
             <Slider
@@ -195,6 +196,21 @@ export function WorkoutPlanGeneratorComponent() {
               onChange={(e) => handleAdditionalInfoChange("specificRequirements", e.target.value)}
             />
           </div>
+          <div className="space-y-2">
+            <Label htmlFor="startDay">Start Day</Label>
+            <Select value={startDay} onValueChange={setStartDay}>
+              <SelectTrigger id="startDay">
+                <SelectValue placeholder="Select start day" />
+              </SelectTrigger>
+              <SelectContent>
+                {["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"].map((day) => (
+                  <SelectItem key={day} value={day}>
+                    {day}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </CardContent>
         <CardFooter>
           <Button className="w-full" onClick={generateWorkoutPlan}>Generate New Plan</Button>
@@ -215,7 +231,7 @@ export function WorkoutPlanGeneratorComponent() {
                 <TabsTrigger value="safety">Safety Advice</TabsTrigger>
                 <TabsTrigger value="progress">Progress Tracking</TabsTrigger>
               </TabsList>
-              <TabsContent value="detailed">
+              <TabsContent value="detailed" className="mt-4">
                 {renderDetailedWorkoutPlan()}
               </TabsContent>
               <TabsContent value="schedule">

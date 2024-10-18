@@ -17,16 +17,17 @@ type WorkoutPlan = {
   progressTrackingSuggestions: string[]
   userWeight: number
   detailedWorkoutPlan?: {
-    [day: string]: {
+    [date: string]: {
       exercises: Array<{
         name: string
         sets: number
         reps: number
         rest: number // in seconds
-        weight?: number // This is now in pounds
+        weight?: number // in pounds
       }>
     }
   }
+  startDate: string // Add this field
 }
 
 type AppContextType = {
@@ -95,8 +96,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const updateWorkoutPlan = async (plan: WorkoutPlan) => {
     if (user) {
-      await saveWorkoutPlan(plan)
-      setWorkoutPlan(plan)
+      const planWithStartDate = {
+        ...plan,
+        startDate: plan.startDate || new Date().toISOString().split('T')[0] // Use current date if not provided
+      }
+      await saveWorkoutPlan(planWithStartDate)
+      setWorkoutPlan(planWithStartDate)
     }
   }
 

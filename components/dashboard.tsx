@@ -16,11 +16,13 @@ import { Auth } from "./auth"
 import { signOut } from 'firebase/auth'
 import { auth } from '@/lib/firebase'
 import { useRouter } from 'next/navigation'
+import { WorkoutCalendar } from './workout-calendar'
 
 export function DashboardComponent() {
   const { user, userProfile, workoutPlan, updateWorkoutPlan } = useAppContext()
   const [activeTab, setActiveTab] = useState("overview")
   const router = useRouter()
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null)
 
   if (!user) {
     return (
@@ -89,11 +91,16 @@ export function DashboardComponent() {
     );
   };
 
+  const handleDateSelect = (date: Date) => {
+    setSelectedDate(date)
+    // You might want to add additional logic here, such as fetching workout details for the selected date
+  }
+
   const renderOverview = () => (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
       {renderProfileSummary()}
       {renderTodaysWorkout()}
-      {/* Add other overview cards here */}
+      <WorkoutCalendar onDateSelect={handleDateSelect} />
     </div>
   )
 
@@ -123,7 +130,9 @@ export function DashboardComponent() {
           <TabsTrigger value="profile">Profile</TabsTrigger>
         </TabsList>
         <TabsContent value="overview">{renderOverview()}</TabsContent>
-        <TabsContent value="progress"><ProgressTrackingComponent /></TabsContent>
+        <TabsContent value="progress">
+          <ProgressTrackingComponent selectedDate={selectedDate} onDateSelect={handleDateSelect} />
+        </TabsContent>
         <TabsContent value="workoutPlan"><WorkoutPlanGeneratorComponent /></TabsContent>
         <TabsContent value="community"><CommunityLeaderboardsComponent /></TabsContent>
         <TabsContent value="profile"><UserProfileSetup /></TabsContent>

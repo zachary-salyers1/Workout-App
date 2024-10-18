@@ -10,41 +10,55 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip } from "recharts"
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
 import { Input } from "@/components/ui/input"
+import { format, parse, isValid, compareAsc, addDays } from "date-fns"
+import { WorkoutCalendar } from './workout-calendar'
 
-export function ProgressTrackingComponent() {
+type ProgressTrackingComponentProps = {
+  selectedDate: Date | null;
+  onDateSelect: (date: Date) => void;
+}
+
+export function ProgressTrackingComponent({ selectedDate, onDateSelect }: ProgressTrackingComponentProps) {
   const { workoutPlan, updateWorkoutPlan } = useAppContext()
-  const [activeTab, setActiveTab] = useState("weight")
-  const [completedWorkouts, setCompletedWorkouts] = useState<{ [key: string]: boolean }>({})
   const [weights, setWeights] = useState<{ [key: string]: number }>({})
-  const [progressData, setProgressData] = useState<Array<{ date: string, weight: number, strength: number }>>([])
+  const [completedWorkouts, setCompletedWorkouts] = useState<{ [key: string]: boolean }>({})
+
+  const sortedWorkoutDays = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+
+  const mapWorkoutsToDates = (workoutPlan: WorkoutPlan) => {
+    if (!workoutPlan.startDate || !workoutPlan.weeklyWorkoutSchedule) return {}
+
+    const startDate = parse(workoutPlan.startDate, 'yyyy-MM-dd', new Date())
+    const mappedWorkouts: { [key: string]: any } = {}
+
+    sortedWorkoutDays.forEach((day, index) => {
+      const date = format(addDays(startDate, index), 'yyyy-MM-dd')
+      if (workoutPlan.weeklyWorkoutSchedule[day]) {
+        mappedWorkouts[date] = {
+          exercises: workoutPlan.weeklyWorkoutSchedule[day].map(exercise => ({
+            name: exercise,
+            sets: 3, // Default values, adjust as needed
+            reps: 10,
+            rest: 60
+          }))
+        }
+      }
+    })
+
+    return mappedWorkouts
+  }
 
   useEffect(() => {
-    // Initialize completed workouts, weights, and progress data when the workout plan changes
-    if (workoutPlan && workoutPlan.detailedWorkoutPlan) {
-      const initialCompletedWorkouts: { [key: string]: boolean } = {}
-      const initialWeights: { [key: string]: number } = {}
-      Object.entries(workoutPlan.detailedWorkoutPlan).forEach(([day, plan]) => {
-        plan.exercises.forEach(exercise => {
-          const key = `${day}-${exercise.name}`
-          initialCompletedWorkouts[key] = false
-          initialWeights[key] = exercise.weight || 0
-        })
-      })
-      setCompletedWorkouts(initialCompletedWorkouts)
-      setWeights(initialWeights)
-
-      // Initialize progress data with the first week's data
-      const initialProgressData = [{
-        date: "Week 1",
-        weight: workoutPlan.userWeight || 0,
-        strength: calculateTotalWeight(initialWeights)
-      }]
-      setProgressData(initialProgressData)
+    if (workoutPlan) {
+      const mappedWorkouts = mapWorkoutsToDates(workoutPlan)
+      // Update your state or workoutPlan here with the mapped workouts
+      // For example:
+      // updateWorkoutPlan({ ...workoutPlan, detailedWorkoutPlan: mappedWorkouts })
     }
   }, [workoutPlan])
 
-  const toggleWorkoutCompletion = (day: string, exerciseName: string) => {
-    const key = `${day}-${exerciseName}`
+  const toggleWorkoutCompletion = (date: string, exerciseName: string) => {
+    const key = `${date}-${exerciseName}`
     setCompletedWorkouts(prev => {
       const newCompletedWorkouts = { ...prev, [key]: !prev[key] }
       updateProgressData(newCompletedWorkouts)
@@ -52,8 +66,8 @@ export function ProgressTrackingComponent() {
     })
   }
 
-  const handleWeightChange = (day: string, exerciseName: string, value: string) => {
-    const key = `${day}-${exerciseName}`
+  const handleWeightChange = (date: string, exerciseName: string, value: string) => {
+    const key = `${date}-${exerciseName}`
     const newWeight = parseFloat(value) || 0
     setWeights(prev => {
       const newWeights = { ...prev, [key]: newWeight }
@@ -64,7 +78,7 @@ export function ProgressTrackingComponent() {
     // Update the workout plan with the new weight
     if (workoutPlan && workoutPlan.detailedWorkoutPlan) {
       const updatedPlan = { ...workoutPlan }
-      const exercise = updatedPlan.detailedWorkoutPlan[day].exercises.find(e => e.name === exerciseName)
+      const exercise = updatedPlan.detailedWorkoutPlan[date].exercises.find(e => e.name === exerciseName)
       if (exercise) {
         exercise.weight = newWeight
         updateWorkoutPlan(updatedPlan)
@@ -93,136 +107,82 @@ export function ProgressTrackingComponent() {
     })
   }
 
-  const renderWorkoutChecklist = () => {
-    if (!workoutPlan || !workoutPlan.detailedWorkoutPlan) return null
+  const formatDate = (dateString: string) => {
+    try {
+      const parsedDate = parse(dateString, 'yyyy-MM-dd', new Date())
+      if (isValid(parsedDate)) {
+        return format(parsedDate, 'EEE, MMM d')
+      }
+    } catch (error) {
+      console.error(`Error parsing date: ${dateString}`, error)
+    }
+    return dateString // Fallback to original string if parsing fails
+  }
+
+  const renderWorkoutDetails = () => {
+    if (!selectedDate || !workoutPlan || !workoutPlan.detailedWorkoutPlan) return null
+
+    const dateString = format(selectedDate, 'yyyy-MM-dd')
+    const workout = workoutPlan.detailedWorkoutPlan[dateString]
+
+    if (!workout) return <p>No workout scheduled for this day.</p>
 
     return (
-      <Card>
+      <Card className="h-full overflow-hidden">
         <CardHeader>
-          <CardTitle>Workout Checklist</CardTitle>
+          <CardTitle>Workout for {format(selectedDate, 'MMMM d, yyyy')}</CardTitle>
         </CardHeader>
-        <CardContent>
-          <Tabs defaultValue={Object.keys(workoutPlan.detailedWorkoutPlan)[0]}>
-            <TabsList>
-              {Object.keys(workoutPlan.detailedWorkoutPlan).map(day => (
-                <TabsTrigger key={day} value={day}>{day}</TabsTrigger>
-              ))}
-            </TabsList>
-            {Object.entries(workoutPlan.detailedWorkoutPlan).map(([day, plan]) => (
-              <TabsContent key={day} value={day}>
-                <table className="w-full">
-                  <thead>
-                    <tr>
-                      <th className="text-left">Exercise</th>
-                      <th className="text-center">Sets</th>
-                      <th className="text-center">Reps</th>
-                      <th className="text-center">Rest</th>
-                      <th className="text-center">Weight (lbs)</th>
-                      <th className="text-center">Completed</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {plan.exercises.map((exercise, index) => (
-                      <tr key={index} className={index % 2 === 0 ? 'bg-gray-50' : ''}>
-                        <td className="py-2">{exercise.name}</td>
-                        <td className="text-center">{exercise.sets}</td>
-                        <td className="text-center">{exercise.reps}</td>
-                        <td className="text-center">{exercise.rest}s</td>
-                        <td className="text-center">
-                          <Input
-                            type="number"
-                            value={weights[`${day}-${exercise.name}`] || ''}
-                            onChange={(e) => handleWeightChange(day, exercise.name, e.target.value)}
-                            className="w-20 mx-auto"
-                          />
-                        </td>
-                        <td className="text-center">
-                          <Button
-                            variant={completedWorkouts[`${day}-${exercise.name}`] ? "default" : "outline"}
-                            size="sm"
-                            onClick={() => toggleWorkoutCompletion(day, exercise.name)}
-                          >
-                            <CheckCircle2 className="h-4 w-4 mr-2" />
-                            {completedWorkouts[`${day}-${exercise.name}`] ? "Done" : "Mark"}
-                          </Button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </TabsContent>
-            ))}
-          </Tabs>
+        <CardContent className="overflow-y-auto max-h-[calc(100vh-200px)]">
+          {workout.exercises.map((exercise, index) => (
+            <div key={index} className="mb-6">
+              <h3 className="text-lg font-semibold">{exercise.name}</h3>
+              <p className="text-sm text-gray-600 mb-2">{exercise.description}</p>
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
+                <div>Sets: {exercise.sets}</div>
+                <div>Reps: {exercise.reps}</div>
+                <div>Rest: {exercise.rest}s</div>
+                <div>
+                  <Input
+                    type="number"
+                    value={weights[`${dateString}-${exercise.name}`] || ''}
+                    onChange={(e) => handleWeightChange(dateString, exercise.name, e.target.value)}
+                    className="w-full"
+                    placeholder="Weight (lbs)"
+                  />
+                </div>
+                <div>
+                  <Button
+                    variant={completedWorkouts[`${dateString}-${exercise.name}`] ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => toggleWorkoutCompletion(dateString, exercise.name)}
+                    className="w-full"
+                  >
+                    <CheckCircle2 className="h-4 w-4 mr-2" />
+                    {completedWorkouts[`${dateString}-${exercise.name}`] ? "Done" : "Mark"}
+                  </Button>
+                </div>
+              </div>
+            </div>
+          ))}
         </CardContent>
       </Card>
     )
   }
 
   return (
-    <div className="container mx-auto p-4 space-y-6">
-      <h1 className="text-3xl font-bold">Progress Tracking</h1>
-
-      {/* ... (existing code for stats cards) ... */}
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Progress Over Time</CardTitle>
-          <CardDescription>Track your weight and strength progress</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList>
-              <TabsTrigger value="weight">Weight</TabsTrigger>
-              <TabsTrigger value="strength">Strength</TabsTrigger>
-            </TabsList>
-            <TabsContent value="weight">
-              <ChartContainer
-                config={{
-                  weight: {
-                    label: "Weight (lbs)",
-                    color: "hsl(var(--chart-1))",
-                  },
-                }}
-                className="h-[300px]"
-              >
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={progressData}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="date" />
-                    <YAxis />
-                    <ChartTooltip content={<ChartTooltipContent />} />
-                    <Line type="monotone" dataKey="weight" stroke="var(--color-weight)" />
-                  </LineChart>
-                </ResponsiveContainer>
-              </ChartContainer>
-            </TabsContent>
-            <TabsContent value="strength">
-              <ChartContainer
-                config={{
-                  strength: {
-                    label: "Total Weight Lifted (lbs)",
-                    color: "hsl(var(--chart-2))",
-                  },
-                }}
-                className="h-[300px]"
-              >
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={progressData}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="date" />
-                    <YAxis />
-                    <ChartTooltip content={<ChartTooltipContent />} />
-                    <Line type="monotone" dataKey="strength" stroke="var(--color-strength)" />
-                  </LineChart>
-                </ResponsiveContainer>
-              </ChartContainer>
-            </TabsContent>
-          </Tabs>
-        </CardContent>
-      </Card>
-
-      <div className="grid gap-6 md:grid-cols-2">
-        {renderWorkoutChecklist()}
+    <div className="space-y-6">
+      <div className="grid gap-6 lg:grid-cols-2">
+        <Card className="lg:col-span-1">
+          <CardHeader>
+            <CardTitle>Workout Calendar</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <WorkoutCalendar onDateSelect={onDateSelect} />
+          </CardContent>
+        </Card>
+        <div className="lg:col-span-1">
+          {renderWorkoutDetails()}
+        </div>
       </div>
     </div>
   )

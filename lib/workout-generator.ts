@@ -1,4 +1,5 @@
 import OpenAI from 'openai'
+import { addDays, format } from 'date-fns'
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -9,16 +10,23 @@ const ASSISTANT_ID = process.env.OPENAI_ASSISTANT_ID
 
 function generateDetailedWorkoutPlan(weeklyWorkoutSchedule: WorkoutPlan['weeklyWorkoutSchedule'], exerciseDescriptions: WorkoutPlan['exerciseDescriptions']): WorkoutPlan['detailedWorkoutPlan'] {
   const detailedPlan: WorkoutPlan['detailedWorkoutPlan'] = {};
+  const startDate = new Date(); // Start from today
 
-  for (const [day, exercises] of Object.entries(weeklyWorkoutSchedule)) {
-    detailedPlan[day] = {
-      exercises: exercises.map(exercise => ({
-        name: exercise,
-        sets: Math.floor(Math.random() * 3) + 2, // Random number between 2-4 sets
-        reps: Math.floor(Math.random() * 8) + 8, // Random number between 8-15 reps
-        rest: (Math.floor(Math.random() * 4) + 1) * 30 // Random rest time between 30-120 seconds
-      }))
-    };
+  for (let week = 0; week < 4; week++) { // Generate a 4-week plan
+    for (const [dayOfWeek, exercises] of Object.entries(weeklyWorkoutSchedule)) {
+      const date = addDays(startDate, week * 7 + ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'].indexOf(dayOfWeek));
+      const dateString = format(date, 'yyyy-MM-dd');
+
+      detailedPlan[dateString] = {
+        exercises: exercises.map(exercise => ({
+          name: exercise,
+          description: exerciseDescriptions[exercise] || 'No description available',
+          sets: Math.floor(Math.random() * 3) + 2,
+          reps: Math.floor(Math.random() * 8) + 8,
+          rest: (Math.floor(Math.random() * 4) + 1) * 30
+        }))
+      };
+    }
   }
 
   return detailedPlan;
