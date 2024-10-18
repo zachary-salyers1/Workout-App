@@ -15,10 +15,12 @@ import UserProfileSetup from "@/hooks/user-profile-setup"
 import { Auth } from "./auth"
 import { signOut } from 'firebase/auth'
 import { auth } from '@/lib/firebase'
+import { useRouter } from 'next/navigation'
 
 export function DashboardComponent() {
-  const { user, userProfile, workoutPlan } = useAppContext()
+  const { user, userProfile, workoutPlan, updateWorkoutPlan } = useAppContext()
   const [activeTab, setActiveTab] = useState("overview")
+  const router = useRouter()
 
   if (!user) {
     return (
@@ -32,6 +34,10 @@ export function DashboardComponent() {
   const handleSignOut = async () => {
     try {
       await signOut(auth)
+      // Clear the workout plan from local state
+      updateWorkoutPlan(null)
+      // Redirect to home page or login page
+      router.push('/')
     } catch (error) {
       console.error('Failed to sign out', error)
     }
@@ -44,10 +50,10 @@ export function DashboardComponent() {
       </CardHeader>
       <CardContent>
         <div className="space-y-2">
-          <div><strong>Name:</strong> {userProfile.name}</div>
-          <div><strong>Fitness Goal:</strong> {userProfile.fitnessGoal}</div>
-          <div><strong>Fitness Level:</strong> {userProfile.fitnessLevel}</div>
-          <div><strong>Workouts per Week:</strong> {userProfile.workoutsPerWeek}</div>
+          <div><strong>Name:</strong> {userProfile?.name || "Not set"}</div>
+          <div><strong>Fitness Goal:</strong> {userProfile?.fitnessGoal || "Not set"}</div>
+          <div><strong>Fitness Level:</strong> {userProfile?.fitnessLevel || "Not set"}</div>
+          <div><strong>Workouts per Week:</strong> {userProfile?.workoutsPerWeek || "Not set"}</div>
         </div>
       </CardContent>
       <CardFooter>
@@ -95,8 +101,8 @@ export function DashboardComponent() {
     <div className="container mx-auto p-4 space-y-4">
       <header className="flex justify-between items-center mb-6">
         <div>
-          <h1 className="text-3xl font-bold">Welcome back, {userProfile.name || "User"}!</h1>
-          {userProfile.fitnessGoal && (
+          <h1 className="text-3xl font-bold">Welcome back, {userProfile?.name || "User"}!</h1>
+          {userProfile?.fitnessGoal && (
             <p className="text-muted-foreground">Goal: {userProfile.fitnessGoal}</p>
           )}
         </div>

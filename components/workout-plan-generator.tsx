@@ -55,17 +55,18 @@ export function WorkoutPlanGeneratorComponent() {
 
       if (response.ok) {
         const newPlan = await response.json()
-        await updateWorkoutPlan(newPlan)
+        await saveWorkoutPlan(newPlan)  // Use saveWorkoutPlan instead of updateWorkoutPlan
+        setNotification("Workout plan generated and saved successfully!")
       } else {
         const errorData = await response.json()
         throw new Error(errorData.details || 'Failed to generate workout plan')
       }
     } catch (error) {
-      console.error('Error generating workout plan:', error);
+      console.error('Error generating workout plan:', error)
       if (error instanceof Error) {
-        setError(error.message);
+        setError(error.message)
       } else {
-        setError('An unexpected error occurred');
+        setError('An unexpected error occurred')
       }
     }
   }

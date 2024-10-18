@@ -31,8 +31,18 @@ type WorkoutPlan = {
 
 type AppContextType = {
   user: User | null
-  userProfile: any
-  updateUserProfile: (profile: any) => Promise<void>
+  userProfile: {
+    // Define the structure of UserProfile here
+    // For example:
+    name: string
+    email: string
+    // Add other relevant fields
+  } | null
+  updateUserProfile: (profile: {
+    name: string
+    email: string
+    // Add other relevant fields
+  }) => Promise<void>
   workoutPlan: WorkoutPlan | null
   updateWorkoutPlan: (plan: WorkoutPlan) => Promise<void>
   saveWorkoutPlan: (plan: WorkoutPlan) => Promise<void>
@@ -42,44 +52,50 @@ const AppContext = createContext<AppContextType | undefined>(undefined)
 
 export function AppProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
-  const [userProfile, setUserProfile] = useState({})
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null)
   const [workoutPlan, setWorkoutPlan] = useState<WorkoutPlan | null>(null)
 
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged(async (user) => {
       setUser(user)
       if (user) {
-        const userDoc = await getDoc(doc(db, 'users', user.uid))
-        if (userDoc.exists()) {
-          setUserProfile(userDoc.data())
-        }
+        await fetchUserProfile(user.uid)
+        await fetchWorkoutPlan(user.uid)
       } else {
-        setUserProfile({})
+        setUserProfile(null)
+        setWorkoutPlan(null)
       }
     })
 
     return () => unsubscribe()
   }, [])
 
-  const updateUserProfile = async (profile: any) => {
+  const fetchUserProfile = async (userId: string) => {
+    const userDocRef = doc(db, 'users', userId)
+    const userDoc = await getDoc(userDocRef)
+    if (userDoc.exists()) {
+      setUserProfile(userDoc.data() as UserProfile)
+    }
+  }
+
+  const fetchWorkoutPlan = async (userId: string) => {
+    const planDocRef = doc(db, 'workoutPlans', userId)
+    const planDoc = await getDoc(planDocRef)
+    if (planDoc.exists()) {
+      setWorkoutPlan(planDoc.data().plan as WorkoutPlan)
+    }
+  }
+
+  const updateUserProfile = async (profile: UserProfile) => {
     if (user) {
-      try {
-        await setDoc(doc(db, 'users', user.uid), profile, { merge: true })
-        setUserProfile(profile)
-        console.log("Profile updated successfully")
-      } catch (error) {
-        console.error("Error updating profile:", error)
-        throw error // Re-throw the error so it can be caught in the component
-      }
-    } else {
-      console.error("No user logged in")
-      throw new Error("No user logged in")
+      await setDoc(doc(db, 'users', user.uid), profile)
+      setUserProfile(profile)
     }
   }
 
   const updateWorkoutPlan = async (plan: WorkoutPlan) => {
     if (user) {
-      await setDoc(doc(db, 'workoutPlans', user.uid), { plan }, { merge: true })
+      await saveWorkoutPlan(plan)
       setWorkoutPlan(plan)
     }
   }
