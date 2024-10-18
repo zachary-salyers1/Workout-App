@@ -9,52 +9,88 @@ import { Progress } from "@/components/ui/progress"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip } from "recharts"
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
-
-// Mock data for progress chart
-const progressData = [
-  { date: "Week 1", weight: 80, strength: 100 },
-  { date: "Week 2", weight: 79, strength: 105 },
-  { date: "Week 3", weight: 78, strength: 110 },
-  { date: "Week 4", weight: 77.5, strength: 115 },
-  { date: "Week 5", weight: 76.5, strength: 120 },
-  { date: "Week 6", weight: 76, strength: 125 },
-]
-
-// Mock data for daily workouts
-const dailyWorkouts = [
-  { id: 1, name: "Morning Cardio", completed: true },
-  { id: 2, name: "Upper Body Strength", completed: false },
-  { id: 3, name: "Evening Yoga", completed: false },
-]
-
-// Mock data for achievements
-const achievements = [
-  { id: 1, name: "First Workout", description: "Completed your first workout", icon: Medal },
-  { id: 2, name: "Week Streak", description: "Completed all workouts for a week", icon: Calendar },
-  { id: 3, name: "Personal Best", description: "Set a new personal record", icon: Trophy },
-]
+import { Input } from "@/components/ui/input"
 
 export function ProgressTrackingComponent() {
-  const { workoutPlan } = useAppContext()
+  const { workoutPlan, updateWorkoutPlan } = useAppContext()
   const [activeTab, setActiveTab] = useState("weight")
   const [completedWorkouts, setCompletedWorkouts] = useState<{ [key: string]: boolean }>({})
+  const [weights, setWeights] = useState<{ [key: string]: number }>({})
+  const [progressData, setProgressData] = useState<Array<{ date: string, weight: number, strength: number }>>([])
 
   useEffect(() => {
-    // Initialize completed workouts when the workout plan changes
+    // Initialize completed workouts, weights, and progress data when the workout plan changes
     if (workoutPlan && workoutPlan.detailedWorkoutPlan) {
       const initialCompletedWorkouts: { [key: string]: boolean } = {}
-      Object.keys(workoutPlan.detailedWorkoutPlan).forEach(day => {
-        workoutPlan.detailedWorkoutPlan[day]?.exercises?.forEach(exercise => {
-          initialCompletedWorkouts[`${day}-${exercise.name}`] = false
+      const initialWeights: { [key: string]: number } = {}
+      Object.entries(workoutPlan.detailedWorkoutPlan).forEach(([day, plan]) => {
+        plan.exercises.forEach(exercise => {
+          const key = `${day}-${exercise.name}`
+          initialCompletedWorkouts[key] = false
+          initialWeights[key] = exercise.weight || 0
         })
       })
       setCompletedWorkouts(initialCompletedWorkouts)
+      setWeights(initialWeights)
+
+      // Initialize progress data with the first week's data
+      const initialProgressData = [{
+        date: "Week 1",
+        weight: workoutPlan.userWeight || 0,
+        strength: calculateTotalWeight(initialWeights)
+      }]
+      setProgressData(initialProgressData)
     }
   }, [workoutPlan])
 
   const toggleWorkoutCompletion = (day: string, exerciseName: string) => {
     const key = `${day}-${exerciseName}`
-    setCompletedWorkouts(prev => ({ ...prev, [key]: !prev[key] }))
+    setCompletedWorkouts(prev => {
+      const newCompletedWorkouts = { ...prev, [key]: !prev[key] }
+      updateProgressData(newCompletedWorkouts)
+      return newCompletedWorkouts
+    })
+  }
+
+  const handleWeightChange = (day: string, exerciseName: string, value: string) => {
+    const key = `${day}-${exerciseName}`
+    const newWeight = parseFloat(value) || 0
+    setWeights(prev => {
+      const newWeights = { ...prev, [key]: newWeight }
+      updateProgressData(completedWorkouts, newWeights)
+      return newWeights
+    })
+
+    // Update the workout plan with the new weight
+    if (workoutPlan && workoutPlan.detailedWorkoutPlan) {
+      const updatedPlan = { ...workoutPlan }
+      const exercise = updatedPlan.detailedWorkoutPlan[day].exercises.find(e => e.name === exerciseName)
+      if (exercise) {
+        exercise.weight = newWeight
+        updateWorkoutPlan(updatedPlan)
+      }
+    }
+  }
+
+  const calculateTotalWeight = (weights: { [key: string]: number }) => {
+    return Object.values(weights).reduce((sum, weight) => sum + weight, 0)
+  }
+
+  const updateProgressData = (completedWorkouts: { [key: string]: boolean }, currentWeights = weights) => {
+    const totalCompletedWorkouts = Object.values(completedWorkouts).filter(Boolean).length
+    const weekNumber = Math.floor(totalCompletedWorkouts / 7) + 1
+    const totalWeight = calculateTotalWeight(currentWeights)
+
+    setProgressData(prev => {
+      const newData = [...prev]
+      const weekIndex = newData.findIndex(data => data.date === `Week ${weekNumber}`)
+      if (weekIndex !== -1) {
+        newData[weekIndex] = { ...newData[weekIndex], strength: totalWeight }
+      } else {
+        newData.push({ date: `Week ${weekNumber}`, weight: workoutPlan?.userWeight || 0, strength: totalWeight })
+      }
+      return newData
+    })
   }
 
   const renderWorkoutChecklist = () => {
@@ -74,21 +110,46 @@ export function ProgressTrackingComponent() {
             </TabsList>
             {Object.entries(workoutPlan.detailedWorkoutPlan).map(([day, plan]) => (
               <TabsContent key={day} value={day}>
-                <ul className="space-y-2">
-                  {plan.exercises.map(exercise => (
-                    <li key={exercise.name} className="flex items-center justify-between">
-                      <span>{exercise.name}</span>
-                      <Button
-                        variant={completedWorkouts[`${day}-${exercise.name}`] ? "default" : "outline"}
-                        size="sm"
-                        onClick={() => toggleWorkoutCompletion(day, exercise.name)}
-                      >
-                        <CheckCircle2 className="h-4 w-4 mr-2" />
-                        {completedWorkouts[`${day}-${exercise.name}`] ? "Completed" : "Mark as Complete"}
-                      </Button>
-                    </li>
-                  ))}
-                </ul>
+                <table className="w-full">
+                  <thead>
+                    <tr>
+                      <th className="text-left">Exercise</th>
+                      <th className="text-center">Sets</th>
+                      <th className="text-center">Reps</th>
+                      <th className="text-center">Rest</th>
+                      <th className="text-center">Weight (lbs)</th>
+                      <th className="text-center">Completed</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {plan.exercises.map((exercise, index) => (
+                      <tr key={index} className={index % 2 === 0 ? 'bg-gray-50' : ''}>
+                        <td className="py-2">{exercise.name}</td>
+                        <td className="text-center">{exercise.sets}</td>
+                        <td className="text-center">{exercise.reps}</td>
+                        <td className="text-center">{exercise.rest}s</td>
+                        <td className="text-center">
+                          <Input
+                            type="number"
+                            value={weights[`${day}-${exercise.name}`] || ''}
+                            onChange={(e) => handleWeightChange(day, exercise.name, e.target.value)}
+                            className="w-20 mx-auto"
+                          />
+                        </td>
+                        <td className="text-center">
+                          <Button
+                            variant={completedWorkouts[`${day}-${exercise.name}`] ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => toggleWorkoutCompletion(day, exercise.name)}
+                          >
+                            <CheckCircle2 className="h-4 w-4 mr-2" />
+                            {completedWorkouts[`${day}-${exercise.name}`] ? "Done" : "Mark"}
+                          </Button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </TabsContent>
             ))}
           </Tabs>
@@ -101,48 +162,7 @@ export function ProgressTrackingComponent() {
     <div className="container mx-auto p-4 space-y-6">
       <h1 className="text-3xl font-bold">Progress Tracking</h1>
 
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Current Weight</CardTitle>
-            <User className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">76 kg</div>
-            <p className="text-xs text-muted-foreground">-4 kg from start</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Strength Progress</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">125</div>
-            <p className="text-xs text-muted-foreground">+25% from start</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Workouts Completed</CardTitle>
-            <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">28</div>
-            <p className="text-xs text-muted-foreground">This month</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Goal Progress</CardTitle>
-            <Trophy className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">68%</div>
-            <Progress value={68} className="mt-2" />
-          </CardContent>
-        </Card>
-      </div>
+      {/* ... (existing code for stats cards) ... */}
 
       <Card>
         <CardHeader>
@@ -159,7 +179,7 @@ export function ProgressTrackingComponent() {
               <ChartContainer
                 config={{
                   weight: {
-                    label: "Weight (kg)",
+                    label: "Weight (lbs)",
                     color: "hsl(var(--chart-1))",
                   },
                 }}
@@ -180,7 +200,7 @@ export function ProgressTrackingComponent() {
               <ChartContainer
                 config={{
                   strength: {
-                    label: "Strength",
+                    label: "Total Weight Lifted (lbs)",
                     color: "hsl(var(--chart-2))",
                   },
                 }}
@@ -200,56 +220,6 @@ export function ProgressTrackingComponent() {
           </Tabs>
         </CardContent>
       </Card>
-
-      <div className="grid gap-6 md:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>Today's Workouts</CardTitle>
-            <CardDescription>Your daily workout checklist</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ul className="space-y-4">
-              {dailyWorkouts.map((workout) => (
-                <li key={workout.id} className="flex items-center justify-between">
-                  <span className="flex items-center">
-                    <Button
-                      variant={workout.completed ? "default" : "outline"}
-                      size="icon"
-                      className="mr-2"
-                      onClick={() => toggleWorkoutCompletion(workout.id)}
-                    >
-                      <CheckCircle2 className="h-4 w-4" />
-                      <span className="sr-only">Mark as {workout.completed ? 'incomplete' : 'complete'}</span>
-                    </Button>
-                    {workout.name}
-                  </span>
-                  {workout.completed && <span className="text-sm text-muted-foreground">Completed</span>}
-                </li>
-              ))}
-            </ul>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Achievements</CardTitle>
-            <CardDescription>Milestones you've reached</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ul className="space-y-4">
-              {achievements.map((achievement) => (
-                <li key={achievement.id} className="flex items-center space-x-3">
-                  <achievement.icon className="h-6 w-6 text-primary" />
-                  <div>
-                    <p className="font-medium">{achievement.name}</p>
-                    <p className="text-sm text-muted-foreground">{achievement.description}</p>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          </CardContent>
-        </Card>
-      </div>
 
       <div className="grid gap-6 md:grid-cols-2">
         {renderWorkoutChecklist()}

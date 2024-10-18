@@ -15,6 +15,7 @@ type WorkoutPlan = {
   }
   safetyAdvice: string[]
   progressTrackingSuggestions: string[]
+  userWeight: number
   detailedWorkoutPlan?: {
     [day: string]: {
       exercises: Array<{
@@ -22,6 +23,7 @@ type WorkoutPlan = {
         sets: number
         reps: number
         rest: number // in seconds
+        weight?: number // This is now in pounds
       }>
     }
   }
