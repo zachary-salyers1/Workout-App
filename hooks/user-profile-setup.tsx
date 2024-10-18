@@ -11,10 +11,14 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Slider } from "@/components/ui/slider"
 import { Switch } from "@/components/ui/switch"
+import { Checkbox } from "@/components/ui/checkbox"
+import { Textarea } from "@/components/ui/textarea"
 
 const fitnessGoals = ["Weight Loss", "Muscle Gain", "Improve Endurance", "General Fitness"]
 const fitnessLevels = ["Beginner", "Intermediate", "Advanced"]
 const equipmentOptions = ["None", "Dumbbells", "Resistance Bands", "Pull-up Bar", "Bench", "Barbell Set"]
+const medicalConditions = ["None", "Heart Disease", "Diabetes", "Asthma", "Arthritis", "Other"]
+const exercisePreferences = ["Running", "Swimming", "Weightlifting", "Yoga", "Cycling", "Other"]
 
 export default function UserProfileSetup() {
   const { user, userProfile, updateUserProfile } = useAppContext()
@@ -35,6 +39,12 @@ export default function UserProfileSetup() {
       glutenFree: false,
       lactoseFree: false,
     },
+    medicalConditions: [],
+    injuries: "",
+    exercisePreferences: [],
+    exerciseDislikes: "",
+    shortTermGoal: "",
+    longTermGoal: "",
   })
   const [isEditing, setIsEditing] = useState(false)
   const [successMessage, setSuccessMessage] = useState("")
@@ -205,6 +215,118 @@ export default function UserProfileSetup() {
     </>
   )
 
+  const renderStep5 = () => (
+    <>
+      <div className="grid gap-4">
+        <div className="grid gap-2">
+          <Label>Medical Conditions</Label>
+          {medicalConditions.map((condition) => (
+            <div key={condition} className="flex items-center space-x-2">
+              <Checkbox
+                id={condition}
+                checked={profile.medicalConditions.includes(condition)}
+                onCheckedChange={(checked) => {
+                  if (checked) {
+                    updateProfile("medicalConditions", [...profile.medicalConditions, condition])
+                  } else {
+                    updateProfile(
+                      "medicalConditions",
+                      profile.medicalConditions.filter((c) => c !== condition)
+                    )
+                  }
+                }}
+              />
+              <Label htmlFor={condition}>{condition}</Label>
+            </div>
+          ))}
+        </div>
+        <div className="grid gap-2">
+          <Label htmlFor="injuries">Injuries or Physical Limitations</Label>
+          <Textarea
+            id="injuries"
+            placeholder="Describe any injuries or physical limitations"
+            value={profile.injuries}
+            onChange={(e) => updateProfile("injuries", e.target.value)}
+          />
+        </div>
+      </div>
+    </>
+  )
+
+  const renderStep6 = () => (
+    <>
+      <div className="grid gap-4">
+        <div className="grid gap-2">
+          <Label>Fitness Level</Label>
+          <RadioGroup onValueChange={(value) => updateProfile("fitnessLevel", value)}>
+            {fitnessLevels.map((level) => (
+              <div key={level} className="flex items-center space-x-2">
+                <RadioGroupItem value={level} id={level} />
+                <Label htmlFor={level}>{level}</Label>
+              </div>
+            ))}
+          </RadioGroup>
+        </div>
+        <div className="grid gap-2">
+          <Label>Exercise Preferences</Label>
+          {exercisePreferences.map((preference) => (
+            <div key={preference} className="flex items-center space-x-2">
+              <Checkbox
+                id={preference}
+                checked={profile.exercisePreferences.includes(preference)}
+                onCheckedChange={(checked) => {
+                  if (checked) {
+                    updateProfile("exercisePreferences", [...profile.exercisePreferences, preference])
+                  } else {
+                    updateProfile(
+                      "exercisePreferences",
+                      profile.exercisePreferences.filter((p) => p !== preference)
+                    )
+                  }
+                }}
+              />
+              <Label htmlFor={preference}>{preference}</Label>
+            </div>
+          ))}
+        </div>
+        <div className="grid gap-2">
+          <Label htmlFor="exerciseDislikes">Exercise Dislikes</Label>
+          <Textarea
+            id="exerciseDislikes"
+            placeholder="Describe exercises you dislike or want to avoid"
+            value={profile.exerciseDislikes}
+            onChange={(e) => updateProfile("exerciseDislikes", e.target.value)}
+          />
+        </div>
+      </div>
+    </>
+  )
+
+  const renderStep7 = () => (
+    <>
+      <div className="grid gap-4">
+        <div className="grid gap-2">
+          <Label htmlFor="shortTermGoal">Short-term Fitness Goal</Label>
+          <Textarea
+            id="shortTermGoal"
+            placeholder="Describe your short-term fitness goal"
+            value={profile.shortTermGoal}
+            onChange={(e) => updateProfile("shortTermGoal", e.target.value)}
+          />
+        </div>
+        <div className="grid gap-2">
+          <Label htmlFor="longTermGoal">Long-term Fitness Goal</Label>
+          <Textarea
+            id="longTermGoal"
+            placeholder="Describe your long-term fitness goal"
+            value={profile.longTermGoal}
+            onChange={(e) => updateProfile("longTermGoal", e.target.value)}
+          />
+        </div>
+      </div>
+    </>
+  )
+
   const isStepValid = (currentStep: number) => {
     switch (currentStep) {
       case 1:
@@ -215,6 +337,12 @@ export default function UserProfileSetup() {
         return profile.fitnessLevel && profile.workoutsPerWeek && profile.equipment.length > 0
       case 4:
         return true // No required fields in step 4
+      case 5:
+        return profile.medicalConditions.length > 0 || profile.injuries
+      case 6:
+        return profile.fitnessLevel && profile.exercisePreferences.length > 0
+      case 7:
+        return profile.shortTermGoal && profile.longTermGoal
       default:
         return false
     }
@@ -282,6 +410,9 @@ export default function UserProfileSetup() {
             {step === 2 && renderStep2()}
             {step === 3 && renderStep3()}
             {step === 4 && renderStep4()}
+            {step === 5 && renderStep5()}
+            {step === 6 && renderStep6()}
+            {step === 7 && renderStep7()}
           </CardContent>
           <CardFooter className="flex justify-between">
             <Button onClick={handlePrev} disabled={step === 1} variant="outline">

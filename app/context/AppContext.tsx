@@ -5,12 +5,24 @@ import { User } from 'firebase/auth'
 import { auth, db } from '@/lib/firebase'
 import { doc, getDoc, setDoc } from 'firebase/firestore'
 
+type WorkoutPlan = {
+  informationSummary: string
+  weeklyWorkoutSchedule: {
+    [key: string]: string[]
+  }
+  exerciseDescriptions: {
+    [key: string]: string
+  }
+  safetyAdvice: string[]
+  progressTrackingSuggestions: string[]
+}
+
 type AppContextType = {
   user: User | null
   userProfile: any
   updateUserProfile: (profile: any) => Promise<void>
-  workoutPlan: any[]
-  updateWorkoutPlan: (plan: any[]) => Promise<void>
+  workoutPlan: WorkoutPlan | null
+  updateWorkoutPlan: (plan: WorkoutPlan) => Promise<void>
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined)
@@ -18,7 +30,7 @@ const AppContext = createContext<AppContextType | undefined>(undefined)
 export function AppProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [userProfile, setUserProfile] = useState({})
-  const [workoutPlan, setWorkoutPlan] = useState([])
+  const [workoutPlan, setWorkoutPlan] = useState<WorkoutPlan | null>(null)
 
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged(async (user) => {
@@ -52,7 +64,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  const updateWorkoutPlan = async (plan: any[]) => {
+  const updateWorkoutPlan = async (plan: WorkoutPlan) => {
     if (user) {
       await setDoc(doc(db, 'workoutPlans', user.uid), { plan }, { merge: true })
       setWorkoutPlan(plan)

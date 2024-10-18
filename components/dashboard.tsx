@@ -66,20 +66,23 @@ export function DashboardComponent() {
       <Card>
         <CardHeader>
           <CardTitle>Today's Workout</CardTitle>
-          <CardDescription>{workoutPlan[0]?.name || "No workout planned"}</CardDescription>
+          <CardDescription>
+            {workoutPlan && workoutPlan.weeklyWorkoutSchedule 
+              ? "Your personalized workout plan" 
+              : "No workout planned"}
+          </CardDescription>
         </CardHeader>
         <CardContent>
-          {workoutPlan[0] ? (
+          {workoutPlan && workoutPlan.weeklyWorkoutSchedule ? (
             <ul className="space-y-2">
-              {workoutPlan[0].exercises.map((exercise: any, index: number) => (
+              {Object.entries(workoutPlan.weeklyWorkoutSchedule)[0][1].map((exercise, index) => (
                 <li key={index} className="flex items-center justify-between">
-                  <span>{exercise.name}</span>
-                  <span className="text-muted-foreground">{exercise.sets} sets x {exercise.reps}</span>
+                  <span>{exercise}</span>
                 </li>
               ))}
             </ul>
           ) : (
-            <p>No exercises planned for today.</p>
+            <p>Generate a workout plan to see your exercises here.</p>
           )}
         </CardContent>
       </Card>
