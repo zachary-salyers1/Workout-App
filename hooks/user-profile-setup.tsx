@@ -176,7 +176,7 @@ export default function UserProfileSetup() {
                 checked={profile.equipment.includes(item)}
                 onCheckedChange={(checked) => {
                   if (checked) {
-                    updateProfile("equipment", [...profile.equipment, item as never])
+                    updateProfile("equipment", [...profile.equipment, item])
                   } else {
                     updateProfile(
                       "equipment",

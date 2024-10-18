@@ -15,6 +15,16 @@ type WorkoutPlan = {
   }
   safetyAdvice: string[]
   progressTrackingSuggestions: string[]
+  detailedWorkoutPlan?: {
+    [day: string]: {
+      exercises: Array<{
+        name: string
+        sets: number
+        reps: number
+        rest: number // in seconds
+      }>
+    }
+  }
 }
 
 type AppContextType = {
@@ -23,6 +33,7 @@ type AppContextType = {
   updateUserProfile: (profile: any) => Promise<void>
   workoutPlan: WorkoutPlan | null
   updateWorkoutPlan: (plan: WorkoutPlan) => Promise<void>
+  saveWorkoutPlan: (plan: WorkoutPlan) => Promise<void>
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined)
@@ -71,8 +82,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   }
 
+  const saveWorkoutPlan = async (plan: WorkoutPlan) => {
+    if (user) {
+      try {
+        await setDoc(doc(db, 'workoutPlans', user.uid), { plan, createdAt: new Date() }, { merge: true })
+        setWorkoutPlan(plan)
+      } catch (error) {
+        console.error("Error saving workout plan:", error)
+        throw error
+      }
+    } else {
+      throw new Error("No user logged in")
+    }
+  }
+
   return (
-    <AppContext.Provider value={{ user, userProfile, updateUserProfile, workoutPlan, updateWorkoutPlan }}>
+    <AppContext.Provider value={{ user, userProfile, updateUserProfile, workoutPlan, updateWorkoutPlan, saveWorkoutPlan }}>
       {children}
     </AppContext.Provider>
   )

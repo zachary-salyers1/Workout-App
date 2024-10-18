@@ -1,6 +1,7 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import { useAppContext } from "@/app/context/AppContext"
 import { Calendar, CheckCircle2, Medal, TrendingUp, Trophy, User } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -34,11 +35,66 @@ const achievements = [
 ]
 
 export function ProgressTrackingComponent() {
+  const { workoutPlan } = useAppContext()
   const [activeTab, setActiveTab] = useState("weight")
+  const [completedWorkouts, setCompletedWorkouts] = useState<{ [key: string]: boolean }>({})
 
-  const toggleWorkoutCompletion = (id: number) => {
-    // In a real app, this would update the state and possibly send data to a backend
-    console.log(`Toggled workout ${id}`)
+  useEffect(() => {
+    // Initialize completed workouts when the workout plan changes
+    if (workoutPlan && workoutPlan.detailedWorkoutPlan) {
+      const initialCompletedWorkouts: { [key: string]: boolean } = {}
+      Object.keys(workoutPlan.detailedWorkoutPlan).forEach(day => {
+        workoutPlan.detailedWorkoutPlan[day]?.exercises?.forEach(exercise => {
+          initialCompletedWorkouts[`${day}-${exercise.name}`] = false
+        })
+      })
+      setCompletedWorkouts(initialCompletedWorkouts)
+    }
+  }, [workoutPlan])
+
+  const toggleWorkoutCompletion = (day: string, exerciseName: string) => {
+    const key = `${day}-${exerciseName}`
+    setCompletedWorkouts(prev => ({ ...prev, [key]: !prev[key] }))
+  }
+
+  const renderWorkoutChecklist = () => {
+    if (!workoutPlan || !workoutPlan.detailedWorkoutPlan) return null
+
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Workout Checklist</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Tabs defaultValue={Object.keys(workoutPlan.detailedWorkoutPlan)[0]}>
+            <TabsList>
+              {Object.keys(workoutPlan.detailedWorkoutPlan).map(day => (
+                <TabsTrigger key={day} value={day}>{day}</TabsTrigger>
+              ))}
+            </TabsList>
+            {Object.entries(workoutPlan.detailedWorkoutPlan).map(([day, plan]) => (
+              <TabsContent key={day} value={day}>
+                <ul className="space-y-2">
+                  {plan.exercises.map(exercise => (
+                    <li key={exercise.name} className="flex items-center justify-between">
+                      <span>{exercise.name}</span>
+                      <Button
+                        variant={completedWorkouts[`${day}-${exercise.name}`] ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => toggleWorkoutCompletion(day, exercise.name)}
+                      >
+                        <CheckCircle2 className="h-4 w-4 mr-2" />
+                        {completedWorkouts[`${day}-${exercise.name}`] ? "Completed" : "Mark as Complete"}
+                      </Button>
+                    </li>
+                  ))}
+                </ul>
+              </TabsContent>
+            ))}
+          </Tabs>
+        </CardContent>
+      </Card>
+    )
   }
 
   return (
@@ -193,6 +249,10 @@ export function ProgressTrackingComponent() {
             </ul>
           </CardContent>
         </Card>
+      </div>
+
+      <div className="grid gap-6 md:grid-cols-2">
+        {renderWorkoutChecklist()}
       </div>
     </div>
   )

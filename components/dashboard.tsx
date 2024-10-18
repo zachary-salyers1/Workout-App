@@ -56,36 +56,38 @@ export function DashboardComponent() {
     </Card>
   )
 
-  const renderOverview = () => (
-    <div className="space-y-4">
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {renderProfileSummary()}
-        {/* Add other overview cards here */}
-      </div>
+  const renderTodaysWorkout = () => {
+    if (!workoutPlan || !workoutPlan.detailedWorkoutPlan) return null;
 
+    const today = new Date().toLocaleString('en-us', {weekday: 'long'});
+    const todaysWorkout = workoutPlan.detailedWorkoutPlan[today];
+
+    if (!todaysWorkout) return <p>No workout scheduled for today.</p>;
+
+    return (
       <Card>
         <CardHeader>
           <CardTitle>Today's Workout</CardTitle>
-          <CardDescription>
-            {workoutPlan && workoutPlan.weeklyWorkoutSchedule 
-              ? "Your personalized workout plan" 
-              : "No workout planned"}
-          </CardDescription>
         </CardHeader>
         <CardContent>
-          {workoutPlan && workoutPlan.weeklyWorkoutSchedule ? (
-            <ul className="space-y-2">
-              {Object.entries(workoutPlan.weeklyWorkoutSchedule)[0][1].map((exercise, index) => (
-                <li key={index} className="flex items-center justify-between">
-                  <span>{exercise}</span>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p>Generate a workout plan to see your exercises here.</p>
-          )}
+          <ul className="space-y-2">
+            {todaysWorkout.exercises.map((exercise, index) => (
+              <li key={index} className="flex items-center justify-between">
+                <span>{exercise.name}</span>
+                <span>{exercise.sets} sets x {exercise.reps} reps</span>
+              </li>
+            ))}
+          </ul>
         </CardContent>
       </Card>
+    );
+  };
+
+  const renderOverview = () => (
+    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+      {renderProfileSummary()}
+      {renderTodaysWorkout()}
+      {/* Add other overview cards here */}
     </div>
   )
 

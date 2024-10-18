@@ -7,6 +7,23 @@ const openai = new OpenAI({
 // You should create an assistant once and reuse its ID
 const ASSISTANT_ID = process.env.OPENAI_ASSISTANT_ID
 
+function generateDetailedWorkoutPlan(weeklyWorkoutSchedule: WorkoutPlan['weeklyWorkoutSchedule'], exerciseDescriptions: WorkoutPlan['exerciseDescriptions']): WorkoutPlan['detailedWorkoutPlan'] {
+  const detailedPlan: WorkoutPlan['detailedWorkoutPlan'] = {};
+
+  for (const [day, exercises] of Object.entries(weeklyWorkoutSchedule)) {
+    detailedPlan[day] = {
+      exercises: exercises.map(exercise => ({
+        name: exercise,
+        sets: Math.floor(Math.random() * 3) + 2, // Random number between 2-4 sets
+        reps: Math.floor(Math.random() * 8) + 8, // Random number between 8-15 reps
+        rest: (Math.floor(Math.random() * 4) + 1) * 30 // Random rest time between 30-120 seconds
+      }))
+    };
+  }
+
+  return detailedPlan;
+}
+
 export async function generateWorkoutPlan(planRequest: any) {
   try {
     const thread = await openai.beta.threads.create()
@@ -106,6 +123,12 @@ export async function generateWorkoutPlan(planRequest: any) {
     if (!parsedContent.weeklyWorkoutSchedule || !parsedContent.exerciseDescriptions || !parsedContent.safetyAdvice || !parsedContent.progressTrackingSuggestions) {
       throw new Error('Invalid workout plan structure returned from assistant')
     }
+
+    // Generate the detailed workout plan
+    const detailedWorkoutPlan = generateDetailedWorkoutPlan(parsedContent.weeklyWorkoutSchedule, parsedContent.exerciseDescriptions);
+    
+    // Add the detailed plan to the parsed content
+    parsedContent.detailedWorkoutPlan = detailedWorkoutPlan;
 
     return parsedContent
   } catch (error) {
