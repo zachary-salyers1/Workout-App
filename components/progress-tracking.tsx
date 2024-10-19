@@ -12,6 +12,8 @@ import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/
 import { Input } from "@/components/ui/input"
 import { format, parse, isValid, compareAsc, addDays } from "date-fns"
 import { WorkoutCalendar } from './workout-calendar'
+import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"
+import { EditWorkoutPlanComponent } from "./edit-workout-plan"
 
 type ProgressTrackingComponentProps = {
   selectedDate: Date | null;
@@ -19,9 +21,11 @@ type ProgressTrackingComponentProps = {
 }
 
 export function ProgressTrackingComponent({ selectedDate, onDateSelect }: ProgressTrackingComponentProps) {
-  const { workoutPlan, updateWorkoutPlan } = useAppContext()
+  const { workoutPlan, updateWorkoutPlan, deleteWorkoutPlan } = useAppContext()
   const [weights, setWeights] = useState<{ [key: string]: number }>({})
   const [completedWorkouts, setCompletedWorkouts] = useState<{ [key: string]: boolean }>({})
+  const [progressData, setProgressData] = useState<Array<{ date: string, weight: number, strength: number }>>([])
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false)
 
   const sortedWorkoutDays = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
 
@@ -169,8 +173,27 @@ export function ProgressTrackingComponent({ selectedDate, onDateSelect }: Progre
     )
   }
 
+  const handleDeleteWorkoutPlan = async () => {
+    if (confirm("Are you sure you want to delete your workout plan?")) {
+      try {
+        await deleteWorkoutPlan()
+        // Handle successful deletion (e.g., show a success message, redirect)
+      } catch (error) {
+        console.error("Failed to delete workout plan:", error)
+        // Handle error (e.g., show error message)
+      }
+    }
+  }
+
   return (
     <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <h2 className="text-2xl font-bold">Progress Tracking</h2>
+        <div>
+          <Button onClick={() => setIsEditModalOpen(true)} className="mr-2">Edit Plan</Button>
+          <Button variant="destructive" onClick={handleDeleteWorkoutPlan}>Delete Plan</Button>
+        </div>
+      </div>
       <div className="grid gap-6 lg:grid-cols-2">
         <Card className="lg:col-span-1">
           <CardHeader>
@@ -184,6 +207,21 @@ export function ProgressTrackingComponent({ selectedDate, onDateSelect }: Progre
           {renderWorkoutDetails()}
         </div>
       </div>
+      <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
+        <DialogContent className="max-w-3xl max-h-[80vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle>Edit Workout Plan</DialogTitle>
+          </DialogHeader>
+          <EditWorkoutPlanComponent
+            workoutPlan={workoutPlan}
+            onSave={(updatedPlan) => {
+              updateWorkoutPlan(updatedPlan)
+              setIsEditModalOpen(false)
+            }}
+            onCancel={() => setIsEditModalOpen(false)}
+          />
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

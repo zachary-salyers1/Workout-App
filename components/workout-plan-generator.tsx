@@ -57,7 +57,7 @@ export function WorkoutPlanGeneratorComponent() {
 
       if (response.ok) {
         const newPlan = await response.json()
-        await saveWorkoutPlan(newPlan)  // Use saveWorkoutPlan instead of updateWorkoutPlan
+        await saveWorkoutPlan(newPlan)  // Use saveWorkoutPlan here
         setNotification("Workout plan generated and saved successfully!")
       } else {
         const errorData = await response.json()

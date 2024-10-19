@@ -33,8 +33,6 @@ type WorkoutPlan = {
 type AppContextType = {
   user: User | null
   userProfile: {
-    // Define the structure of UserProfile here
-    // For example:
     name: string
     email: string
     // Add other relevant fields
@@ -45,7 +43,8 @@ type AppContextType = {
     // Add other relevant fields
   }) => Promise<void>
   workoutPlan: WorkoutPlan | null
-  updateWorkoutPlan: (plan: WorkoutPlan) => Promise<void>
+  updateWorkoutPlan: (plan: Partial<WorkoutPlan>) => Promise<void>
+  deleteWorkoutPlan: () => Promise<void>
   saveWorkoutPlan: (plan: WorkoutPlan) => Promise<void>
 }
 
@@ -94,14 +93,27 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  const updateWorkoutPlan = async (plan: WorkoutPlan) => {
+  const deleteWorkoutPlan = async () => {
     if (user) {
-      const planWithStartDate = {
-        ...plan,
-        startDate: plan.startDate || new Date().toISOString().split('T')[0] // Use current date if not provided
+      try {
+        await setDoc(doc(db, 'workoutPlans', user.uid), { plan: null, deletedAt: new Date() })
+        setWorkoutPlan(null)
+      } catch (error) {
+        console.error("Error deleting workout plan:", error)
+        throw error
       }
-      await saveWorkoutPlan(planWithStartDate)
-      setWorkoutPlan(planWithStartDate)
+    } else {
+      throw new Error("No user logged in")
+    }
+  }
+
+  const updateWorkoutPlan = async (planUpdates: Partial<WorkoutPlan>) => {
+    if (user && workoutPlan) {
+      const updatedPlan = { ...workoutPlan, ...planUpdates }
+      await saveWorkoutPlan(updatedPlan)
+      setWorkoutPlan(updatedPlan)
+    } else {
+      throw new Error("No user logged in or no existing workout plan")
     }
   }
 
@@ -120,7 +132,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <AppContext.Provider value={{ user, userProfile, updateUserProfile, workoutPlan, updateWorkoutPlan, saveWorkoutPlan }}>
+    <AppContext.Provider value={{ 
+      user, 
+      userProfile, 
+      updateUserProfile, 
+      workoutPlan, 
+      updateWorkoutPlan, 
+      deleteWorkoutPlan,
+      saveWorkoutPlan
+    }}>
       {children}
     </AppContext.Provider>
   )
