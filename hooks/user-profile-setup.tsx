@@ -19,6 +19,42 @@ const fitnessLevels = ["Beginner", "Intermediate", "Advanced"]
 const equipmentOptions = ["None", "Dumbbells", "Resistance Bands", "Pull-up Bar", "Bench", "Barbell Set"]
 const medicalConditions = ["None", "Heart Disease", "Diabetes", "Asthma", "Arthritis", "Other"]
 const exercisePreferences = ["Running", "Swimming", "Weightlifting", "Yoga", "Cycling", "Other"]
+const healthConditions = [
+  "Hypertension",
+  "Type 2 Diabetes",
+  "High Cholesterol",
+  "Anxiety/Depression",
+  "Sleep Disorders",
+  "Obesity",
+  "Other"
+]
+const medications = [
+  "Blood Pressure Medication",
+  "Diabetes Medication",
+  "Cholesterol Medication",
+  "Anti-anxiety/Depression Medication",
+  "Sleep Medication",
+  "Other"
+]
+const sleepPatterns = [
+  "Less than 6 hours",
+  "6-7 hours",
+  "7-8 hours",
+  "More than 8 hours"
+]
+const stressLevels = [
+  "Low",
+  "Moderate",
+  "High",
+  "Severe"
+]
+
+// Add this type for medication details
+type MedicationDetail = {
+  name: string
+  dosage: string
+  frequency: string
+}
 
 export default function UserProfileSetup() {
   const { user, userProfile, updateUserProfile } = useAppContext()
@@ -39,12 +75,38 @@ export default function UserProfileSetup() {
       glutenFree: false,
       lactoseFree: false,
     },
-    medicalConditions: [],
+    medicalConditions: [] as string[],
     injuries: "",
     exercisePreferences: [],
     exerciseDislikes: "",
     shortTermGoal: "",
     longTermGoal: "",
+    healthConditions: [] as string[],
+    currentMedications: [] as string[],
+    medicationDetails: [] as MedicationDetail[],
+    sleepPattern: "",
+    stressLevel: "",
+    dietaryHabits: {
+      mealsPerDay: 3,
+      snacking: false,
+      waterIntake: 0,
+      regularMealtimes: false,
+    },
+    healthGoals: {
+      medicationReduction: false,
+      weightManagement: false,
+      sleepImprovement: false,
+      stressReduction: false,
+      bloodPressureControl: false,
+      bloodSugarControl: false,
+    },
+    baselineAssessment: {
+      bloodPressure: "",
+      bloodSugar: "",
+      weight: "",
+      sleepQuality: "",
+      energyLevel: "",
+    }
   })
   const [isEditing, setIsEditing] = useState(false)
   const [successMessage, setSuccessMessage] = useState("")
@@ -327,6 +389,198 @@ export default function UserProfileSetup() {
     </>
   )
 
+  // Add this function to handle medication details
+  const updateMedicationDetail = (medicationName: string, field: keyof MedicationDetail, value: string) => {
+    setProfile(prev => {
+      const existingDetails = prev.medicationDetails || []
+      const medicationIndex = existingDetails.findIndex(detail => detail.name === medicationName)
+      
+      if (medicationIndex === -1) {
+        return {
+          ...prev,
+          medicationDetails: [
+            ...existingDetails,
+            { name: medicationName, dosage: '', frequency: '', [field]: value }
+          ]
+        }
+      } else {
+        const updatedDetails = [...existingDetails]
+        updatedDetails[medicationIndex] = {
+          ...updatedDetails[medicationIndex],
+          [field]: value
+        }
+        return {
+          ...prev,
+          medicationDetails: updatedDetails
+        }
+      }
+    })
+  }
+
+  const renderHealthConditions = () => (
+    <>
+      <div className="grid gap-4">
+        <div className="grid gap-2">
+          <Label>Current Health Conditions</Label>
+          {healthConditions.map((condition) => (
+            <div key={condition} className="flex items-center space-x-2">
+              <Checkbox
+                id={condition}
+                checked={profile.healthConditions?.includes(condition) || false}
+                onCheckedChange={(checked) => {
+                  if (checked) {
+                    updateProfile("healthConditions", [...(profile.healthConditions || []), condition])
+                  } else {
+                    updateProfile(
+                      "healthConditions",
+                      (profile.healthConditions || []).filter((c) => c !== condition)
+                    )
+                  }
+                }}
+              />
+              <Label htmlFor={condition}>{condition}</Label>
+            </div>
+          ))}
+        </div>
+
+        <div className="grid gap-2">
+          <Label>Current Medications</Label>
+          {medications.map((medicationType) => (
+            <div key={medicationType} className="space-y-2">
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id={medicationType}
+                  checked={profile.currentMedications?.includes(medicationType) || false}
+                  onCheckedChange={(checked) => {
+                    if (checked) {
+                      updateProfile("currentMedications", [...(profile.currentMedications || []), medicationType])
+                      // Initialize medication details when checked
+                      updateMedicationDetail(medicationType, 'name', '')
+                    } else {
+                      updateProfile(
+                        "currentMedications",
+                        (profile.currentMedications || []).filter((m) => m !== medicationType)
+                      )
+                      // Remove medication details when unchecked
+                      setProfile(prev => ({
+                        ...prev,
+                        medicationDetails: (prev.medicationDetails || []).filter(detail => detail.name !== medicationType)
+                      }))
+                    }
+                  }}
+                />
+                <Label htmlFor={medicationType}>{medicationType}</Label>
+              </div>
+              
+              {profile.currentMedications?.includes(medicationType) && (
+                <div className="ml-6 space-y-2 p-2 border rounded-md bg-muted/50">
+                  <div className="grid gap-2">
+                    <Label htmlFor={`${medicationType}-name`}>Medication Name</Label>
+                    <Input
+                      id={`${medicationType}-name`}
+                      placeholder="Enter medication name"
+                      value={(profile.medicationDetails || []).find(d => d.name === medicationType)?.name || ''}
+                      onChange={(e) => updateMedicationDetail(medicationType, 'name', e.target.value)}
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor={`${medicationType}-dosage`}>Dosage</Label>
+                    <Input
+                      id={`${medicationType}-dosage`}
+                      placeholder="e.g., 50mg"
+                      value={(profile.medicationDetails || []).find(d => d.name === medicationType)?.dosage || ''}
+                      onChange={(e) => updateMedicationDetail(medicationType, 'dosage', e.target.value)}
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor={`${medicationType}-frequency`}>Frequency</Label>
+                    <Select 
+                      onValueChange={(value) => updateMedicationDetail(medicationType, 'frequency', value)}
+                      value={(profile.medicationDetails || []).find(d => d.name === medicationType)?.frequency || ''}
+                    >
+                      <SelectTrigger id={`${medicationType}-frequency`}>
+                        <SelectValue placeholder="Select frequency" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="once">Once daily</SelectItem>
+                        <SelectItem value="twice">Twice daily</SelectItem>
+                        <SelectItem value="three">Three times daily</SelectItem>
+                        <SelectItem value="four">Four times daily</SelectItem>
+                        <SelectItem value="asNeeded">As needed</SelectItem>
+                        <SelectItem value="other">Other</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+    </>
+  )
+
+  const renderLifestyleAssessment = () => (
+    <>
+      <div className="grid gap-4">
+        <div className="grid gap-2">
+          <Label>Sleep Pattern</Label>
+          <RadioGroup onValueChange={(value) => updateProfile("sleepPattern", value)}>
+            {sleepPatterns.map((pattern) => (
+              <div key={pattern} className="flex items-center space-x-2">
+                <RadioGroupItem value={pattern} id={pattern} />
+                <Label htmlFor={pattern}>{pattern}</Label>
+              </div>
+            ))}
+          </RadioGroup>
+        </div>
+
+        <div className="grid gap-2">
+          <Label>Stress Level</Label>
+          <RadioGroup onValueChange={(value) => updateProfile("stressLevel", value)}>
+            {stressLevels.map((level) => (
+              <div key={level} className="flex items-center space-x-2">
+                <RadioGroupItem value={level} id={level} />
+                <Label htmlFor={level}>{level}</Label>
+              </div>
+            ))}
+          </RadioGroup>
+        </div>
+
+        <div className="grid gap-2">
+          <Label>Dietary Habits</Label>
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <span>Meals per day</span>
+              <Input
+                type="number"
+                min={1}
+                max={6}
+                value={profile.dietaryHabits.mealsPerDay}
+                onChange={(e) => updateProfile("dietaryHabits", {
+                  ...profile.dietaryHabits,
+                  mealsPerDay: parseInt(e.target.value)
+                })}
+                className="w-20"
+              />
+            </div>
+            <div className="flex items-center space-x-2">
+              <Switch
+                id="snacking"
+                checked={profile.dietaryHabits.snacking}
+                onCheckedChange={(checked) => updateProfile("dietaryHabits", {
+                  ...profile.dietaryHabits,
+                  snacking: checked
+                })}
+              />
+              <Label htmlFor="snacking">Regular Snacking</Label>
+            </div>
+          </div>
+        </div>
+      </div>
+    </>
+  )
+
   const isStepValid = (currentStep: number) => {
     switch (currentStep) {
       case 1:
@@ -409,8 +663,8 @@ export default function UserProfileSetup() {
             {step === 1 && renderStep1()}
             {step === 2 && renderStep2()}
             {step === 3 && renderStep3()}
-            {step === 4 && renderStep4()}
-            {step === 5 && renderStep5()}
+            {step === 4 && renderHealthConditions()}
+            {step === 5 && renderLifestyleAssessment()}
             {step === 6 && renderStep6()}
             {step === 7 && renderStep7()}
           </CardContent>

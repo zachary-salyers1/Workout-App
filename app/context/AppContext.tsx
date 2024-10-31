@@ -30,18 +30,47 @@ type WorkoutPlan = {
   startDate: string // Add this field
 }
 
+type MedicationDetail = {
+  name: string
+  dosage: string
+  frequency: string
+}
+
+type UserProfile = {
+  name: string
+  email: string
+  healthConditions: string[]
+  currentMedications: string[]
+  medicationDetails: MedicationDetail[]
+  sleepPattern: string
+  stressLevel: string
+  dietaryHabits: {
+    mealsPerDay: number
+    snacking: boolean
+    waterIntake: number
+    regularMealtimes: boolean
+  }
+  healthGoals: {
+    medicationReduction: boolean
+    weightManagement: boolean
+    sleepImprovement: boolean
+    stressReduction: boolean
+    bloodPressureControl: boolean
+    bloodSugarControl: boolean
+  }
+  baselineAssessment: {
+    bloodPressure: string
+    bloodSugar: string
+    weight: string
+    sleepQuality: string
+    energyLevel: string
+  }
+}
+
 type AppContextType = {
   user: User | null
-  userProfile: {
-    name: string
-    email: string
-    // Add other relevant fields
-  } | null
-  updateUserProfile: (profile: {
-    name: string
-    email: string
-    // Add other relevant fields
-  }) => Promise<void>
+  userProfile: UserProfile | null
+  updateUserProfile: (profile: UserProfile) => Promise<void>
   workoutPlan: WorkoutPlan | null
   updateWorkoutPlan: (plan: Partial<WorkoutPlan>) => Promise<void>
   deleteWorkoutPlan: () => Promise<void>
