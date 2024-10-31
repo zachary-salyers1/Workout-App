@@ -57,6 +57,7 @@ type UserProfile = {
     stressReduction: boolean
     bloodPressureControl: boolean
     bloodSugarControl: boolean
+    [key: string]: boolean
   }
   baselineAssessment: {
     bloodPressure: string

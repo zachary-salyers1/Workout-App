@@ -13,6 +13,7 @@ import { Slider } from "@/components/ui/slider"
 import { Switch } from "@/components/ui/switch"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Textarea } from "@/components/ui/textarea"
+import HealthGoalsSetup from "@/app/components/health-goals-setup"
 
 const fitnessGoals = ["Weight Loss", "Muscle Gain", "Improve Endurance", "General Fitness"]
 const fitnessLevels = ["Beginner", "Intermediate", "Advanced"]
@@ -51,6 +52,7 @@ const stressLevels = [
 
 // Add this type for medication details
 type MedicationDetail = {
+  medicationType: string
   name: string
   dosage: string
   frequency: string
@@ -92,14 +94,6 @@ export default function UserProfileSetup() {
       waterIntake: 0,
       regularMealtimes: false,
     },
-    healthGoals: {
-      medicationReduction: false,
-      weightManagement: false,
-      sleepImprovement: false,
-      stressReduction: false,
-      bloodPressureControl: false,
-      bloodSugarControl: false,
-    },
     baselineAssessment: {
       bloodPressure: "",
       bloodSugar: "",
@@ -110,6 +104,7 @@ export default function UserProfileSetup() {
   })
   const [isEditing, setIsEditing] = useState(false)
   const [successMessage, setSuccessMessage] = useState("")
+  const [isEditingHealthGoals, setIsEditingHealthGoals] = useState(false)
 
   useEffect(() => {
     if (userProfile && Object.keys(userProfile).length > 0) {
@@ -390,20 +385,22 @@ export default function UserProfileSetup() {
   )
 
   // Add this function to handle medication details
-  const updateMedicationDetail = (medicationName: string, field: keyof MedicationDetail, value: string) => {
+  const updateMedicationDetail = (medicationType: string, field: keyof MedicationDetail, value: string) => {
     setProfile(prev => {
       const existingDetails = prev.medicationDetails || []
-      const medicationIndex = existingDetails.findIndex(detail => detail.name === medicationName)
+      const medicationIndex = existingDetails.findIndex(detail => detail.medicationType === medicationType)
       
       if (medicationIndex === -1) {
+        // Create new medication detail
         return {
           ...prev,
           medicationDetails: [
             ...existingDetails,
-            { name: medicationName, dosage: '', frequency: '', [field]: value }
+            { medicationType, name: '', dosage: '', frequency: '', [field]: value }
           ]
         }
       } else {
+        // Update existing medication detail
         const updatedDetails = [...existingDetails]
         updatedDetails[medicationIndex] = {
           ...updatedDetails[medicationIndex],
@@ -455,7 +452,7 @@ export default function UserProfileSetup() {
                     if (checked) {
                       updateProfile("currentMedications", [...(profile.currentMedications || []), medicationType])
                       // Initialize medication details when checked
-                      updateMedicationDetail(medicationType, 'name', '')
+                      updateMedicationDetail(medicationType, 'medicationType', medicationType)
                     } else {
                       updateProfile(
                         "currentMedications",
@@ -464,7 +461,9 @@ export default function UserProfileSetup() {
                       // Remove medication details when unchecked
                       setProfile(prev => ({
                         ...prev,
-                        medicationDetails: (prev.medicationDetails || []).filter(detail => detail.name !== medicationType)
+                        medicationDetails: (prev.medicationDetails || []).filter(detail => 
+                          detail.medicationType !== medicationType
+                        )
                       }))
                     }
                   }}
@@ -479,7 +478,8 @@ export default function UserProfileSetup() {
                     <Input
                       id={`${medicationType}-name`}
                       placeholder="Enter medication name"
-                      value={(profile.medicationDetails || []).find(d => d.name === medicationType)?.name || ''}
+                      value={(profile.medicationDetails || [])
+                        .find(d => d.medicationType === medicationType)?.name || ''}
                       onChange={(e) => updateMedicationDetail(medicationType, 'name', e.target.value)}
                     />
                   </div>
@@ -488,7 +488,8 @@ export default function UserProfileSetup() {
                     <Input
                       id={`${medicationType}-dosage`}
                       placeholder="e.g., 50mg"
-                      value={(profile.medicationDetails || []).find(d => d.name === medicationType)?.dosage || ''}
+                      value={(profile.medicationDetails || [])
+                        .find(d => d.medicationType === medicationType)?.dosage || ''}
                       onChange={(e) => updateMedicationDetail(medicationType, 'dosage', e.target.value)}
                     />
                   </div>
@@ -496,7 +497,8 @@ export default function UserProfileSetup() {
                     <Label htmlFor={`${medicationType}-frequency`}>Frequency</Label>
                     <Select 
                       onValueChange={(value) => updateMedicationDetail(medicationType, 'frequency', value)}
-                      value={(profile.medicationDetails || []).find(d => d.name === medicationType)?.frequency || ''}
+                      value={(profile.medicationDetails || [])
+                        .find(d => d.medicationType === medicationType)?.frequency || ''}
                     >
                       <SelectTrigger id={`${medicationType}-frequency`}>
                         <SelectValue placeholder="Select frequency" />
@@ -619,34 +621,101 @@ export default function UserProfileSetup() {
   }
 
   const renderProfileSummary = () => (
-    <Card className="max-w-2xl mx-auto">
-      <CardHeader>
-        <CardTitle className="text-2xl font-bold">Your Profile</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="grid grid-cols-2 gap-4">
-          <div><strong>Name:</strong> {profile.name}</div>
-          <div><strong>Age:</strong> {profile.age}</div>
-          <div><strong>Gender:</strong> {profile.gender}</div>
-          <div><strong>Height:</strong> {profile.height} cm</div>
-          <div><strong>Weight:</strong> {profile.weight} kg</div>
-          <div><strong>Fitness Goal:</strong> {profile.fitnessGoal}</div>
-          <div><strong>Fitness Level:</strong> {profile.fitnessLevel}</div>
-          <div><strong>Workouts per Week:</strong> {profile.workoutsPerWeek}</div>
+    <div className="space-y-6">
+      <Card className="max-w-2xl mx-auto">
+        <CardHeader>
+          <CardTitle className="text-2xl font-bold">Your Profile</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div><strong>Name:</strong> {profile.name}</div>
+            <div><strong>Age:</strong> {profile.age}</div>
+            <div><strong>Gender:</strong> {profile.gender}</div>
+            <div><strong>Height:</strong> {profile.height} cm</div>
+            <div><strong>Weight:</strong> {profile.weight} kg</div>
+            <div><strong>Fitness Goal:</strong> {profile.fitnessGoal}</div>
+            <div><strong>Fitness Level:</strong> {profile.fitnessLevel}</div>
+            <div><strong>Workouts per Week:</strong> {profile.workoutsPerWeek}</div>
+          </div>
+          <div><strong>Equipment:</strong> {profile.equipment.join(", ")}</div>
+          <div>
+            <strong>Dietary Preferences:</strong> 
+            {Object.entries(profile.dietaryPreferences)
+              .filter(([_, value]) => value)
+              .map(([key, _]) => key)
+              .join(", ") || "None"}
+          </div>
+        </CardContent>
+        <CardFooter>
+          <Button onClick={() => setIsEditing(true)}>Edit Profile</Button>
+        </CardFooter>
+      </Card>
+
+      {/* Add Health Goals Section */}
+      <Card className="max-w-2xl mx-auto">
+        <CardHeader>
+          <CardTitle className="text-2xl font-bold">Health Goals</CardTitle>
+          <CardDescription>Your current health goals and recommendations</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {profile.healthGoals ? (
+            <div className="grid gap-4">
+              {Object.entries(profile.healthGoals).map(([goal, isSelected]) => {
+                if (!isSelected) return null;
+                return (
+                  <div key={goal} className="flex items-center gap-2">
+                    <div className="h-2 w-2 bg-primary rounded-full" />
+                    <span>
+                      {goal.startsWith('custom_') 
+                        ? goal
+                            .replace('custom_', '')
+                            .replace(/_/g, ' ')
+                            .split(' ')
+                            .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+                            .join(' ')
+                        : goal.replace(/([A-Z])/g, ' $1').trim()}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="text-muted-foreground">No health goals set yet</div>
+          )}
+        </CardContent>
+        <CardFooter>
+          <Button 
+            variant="outline"
+            onClick={() => setIsEditingHealthGoals(true)}
+          >
+            Update Health Goals
+          </Button>
+        </CardFooter>
+      </Card>
+
+      {/* Add Health Goals Edit Dialog */}
+      {isEditingHealthGoals && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-background p-4 rounded-lg max-w-lg w-full max-h-[90vh] overflow-y-auto">
+            <HealthGoalsSetup 
+              onClose={() => setIsEditingHealthGoals(false)}
+              onSave={async (goals) => {
+                try {
+                  await updateUserProfile({
+                    ...profile,
+                    healthGoals: goals
+                  })
+                  setIsEditingHealthGoals(false)
+                  setSuccessMessage("Health goals updated successfully!")
+                } catch (error) {
+                  setSuccessMessage("Failed to update health goals")
+                }
+              }}
+            />
+          </div>
         </div>
-        <div><strong>Equipment:</strong> {profile.equipment.join(", ")}</div>
-        <div>
-          <strong>Dietary Preferences:</strong> 
-          {Object.entries(profile.dietaryPreferences)
-            .filter(([_, value]) => value)
-            .map(([key, _]) => key)
-            .join(", ") || "None"}
-        </div>
-      </CardContent>
-      <CardFooter>
-        <Button onClick={() => setIsEditing(true)}>Edit Profile</Button>
-      </CardFooter>
-    </Card>
+      )}
+    </div>
   )
 
   return (
@@ -664,9 +733,6 @@ export default function UserProfileSetup() {
             {step === 2 && renderStep2()}
             {step === 3 && renderStep3()}
             {step === 4 && renderHealthConditions()}
-            {step === 5 && renderLifestyleAssessment()}
-            {step === 6 && renderStep6()}
-            {step === 7 && renderStep7()}
           </CardContent>
           <CardFooter className="flex justify-between">
             <Button onClick={handlePrev} disabled={step === 1} variant="outline">
