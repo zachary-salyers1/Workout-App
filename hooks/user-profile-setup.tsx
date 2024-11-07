@@ -621,101 +621,55 @@ export default function UserProfileSetup() {
   }
 
   const renderProfileSummary = () => (
-    <div className="space-y-6">
-      <Card className="max-w-2xl mx-auto">
-        <CardHeader>
-          <CardTitle className="text-2xl font-bold">Your Profile</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div><strong>Name:</strong> {profile.name}</div>
-            <div><strong>Age:</strong> {profile.age}</div>
-            <div><strong>Gender:</strong> {profile.gender}</div>
-            <div><strong>Height:</strong> {profile.height} cm</div>
-            <div><strong>Weight:</strong> {profile.weight} kg</div>
-            <div><strong>Fitness Goal:</strong> {profile.fitnessGoal}</div>
-            <div><strong>Fitness Level:</strong> {profile.fitnessLevel}</div>
-            <div><strong>Workouts per Week:</strong> {profile.workoutsPerWeek}</div>
-          </div>
-          <div><strong>Equipment:</strong> {profile.equipment.join(", ")}</div>
-          <div>
-            <strong>Dietary Preferences:</strong> 
-            {Object.entries(profile.dietaryPreferences)
-              .filter(([_, value]) => value)
-              .map(([key, _]) => key)
-              .join(", ") || "None"}
-          </div>
-        </CardContent>
-        <CardFooter>
-          <Button onClick={() => setIsEditing(true)}>Edit Profile</Button>
-        </CardFooter>
-      </Card>
-
-      {/* Add Health Goals Section */}
-      <Card className="max-w-2xl mx-auto">
-        <CardHeader>
-          <CardTitle className="text-2xl font-bold">Health Goals</CardTitle>
-          <CardDescription>Your current health goals and recommendations</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {profile.healthGoals ? (
-            <div className="grid gap-4">
-              {Object.entries(profile.healthGoals).map(([goal, isSelected]) => {
-                if (!isSelected) return null;
-                return (
-                  <div key={goal} className="flex items-center gap-2">
-                    <div className="h-2 w-2 bg-primary rounded-full" />
-                    <span>
-                      {goal.startsWith('custom_') 
-                        ? goal
-                            .replace('custom_', '')
-                            .replace(/_/g, ' ')
-                            .split(' ')
-                            .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-                            .join(' ')
-                        : goal.replace(/([A-Z])/g, ' $1').trim()}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-          ) : (
-            <div className="text-muted-foreground">No health goals set yet</div>
-          )}
-        </CardContent>
-        <CardFooter>
-          <Button 
-            variant="outline"
-            onClick={() => setIsEditingHealthGoals(true)}
-          >
-            Update Health Goals
-          </Button>
-        </CardFooter>
-      </Card>
-
-      {/* Add Health Goals Edit Dialog */}
-      {isEditingHealthGoals && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-background p-4 rounded-lg max-w-lg w-full max-h-[90vh] overflow-y-auto">
-            <HealthGoalsSetup 
-              onClose={() => setIsEditingHealthGoals(false)}
-              onSave={async (goals) => {
-                try {
-                  await updateUserProfile({
-                    ...profile,
-                    healthGoals: goals
-                  })
-                  setIsEditingHealthGoals(false)
-                  setSuccessMessage("Health goals updated successfully!")
-                } catch (error) {
-                  setSuccessMessage("Failed to update health goals")
-                }
-              }}
-            />
-          </div>
+    <Card className="max-w-2xl mx-auto">
+      <CardHeader>
+        <CardTitle className="text-2xl font-bold">Your Profile</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="grid grid-cols-2 gap-4">
+          <div><strong>Name:</strong> {profile.name}</div>
+          <div><strong>Age:</strong> {profile.age}</div>
+          <div><strong>Gender:</strong> {profile.gender}</div>
+          <div><strong>Height:</strong> {profile.height} cm</div>
+          <div><strong>Weight:</strong> {profile.weight} kg</div>
+          <div><strong>Fitness Goal:</strong> {profile.fitnessGoal}</div>
+          <div><strong>Fitness Level:</strong> {profile.fitnessLevel}</div>
+          <div><strong>Workouts per Week:</strong> {profile.workoutsPerWeek}</div>
         </div>
-      )}
-    </div>
+        <div><strong>Equipment:</strong> {profile.equipment.join(", ")}</div>
+        <div>
+          <strong>Dietary Preferences:</strong> 
+          {Object.entries(profile.dietaryPreferences)
+            .filter(([_, value]) => value)
+            .map(([key, _]) => key)
+            .join(", ") || "None"}
+        </div>
+        <div>
+          <strong>Health Conditions:</strong> 
+          {profile.healthConditions?.join(", ") ?? "None"}
+        </div>
+        <div>
+          <strong>Current Medications:</strong>
+          {profile.medicationDetails.length > 0 ? (
+            <ul>
+              {profile.medicationDetails.map((detail) => (
+                <li key={detail.medicationType}>
+                  <strong>{detail.medicationType}</strong>
+                  <div>Name: {detail.name}</div>
+                  <div>Dosage: {detail.dosage} mg</div>
+                  <div>Frequency: {detail.frequency}</div>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            "None"
+          )}
+        </div>
+      </CardContent>
+      <CardFooter>
+        <Button onClick={() => setIsEditing(true)}>Edit Profile</Button>
+      </CardFooter>
+    </Card>
   )
 
   return (
