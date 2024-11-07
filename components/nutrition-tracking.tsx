@@ -46,6 +46,15 @@ export function NutritionTrackingComponent() {
     workout: WorkoutPlan | null,
     mealPlan: MealPlan | null
   }>({ workout: null, mealPlan: null })
+  const [isAddFoodOpen, setIsAddFoodOpen] = useState(false)
+  const [newFood, setNewFood] = useState<Partial<FoodEntry>>({
+    name: '',
+    calories: 0,
+    protein: 0,
+    carbs: 0,
+    fat: 0,
+    servingSize: '1 serving'
+  })
 
   const dailyCalorieGoal = userProfile?.dailyCalorieGoal || 2000
   const totalCalories = foodEntries.reduce((sum, entry) => sum + entry.calories, 0)
@@ -154,28 +163,165 @@ export function NutritionTrackingComponent() {
     </div>
   )
 
-  // Add new section to render daily plan
+  // Update the renderDailyPlan function
   const renderDailyPlan = () => (
     <Card>
       <CardHeader>
         <CardTitle>Daily Plan</CardTitle>
       </CardHeader>
-      <CardContent>
+      <CardContent className="space-y-6">
         {dailyPlan.workout && (
-          <div className="mb-4">
+          <div className="space-y-2">
             <h3 className="font-semibold">Workout Plan</h3>
-            {/* Render workout details */}
+            <div className="text-sm text-muted-foreground">
+              {dailyPlan.workout.name || 'Workout scheduled for today'}
+            </div>
           </div>
         )}
-        {dailyPlan.mealPlan && (
-          <div>
-            <h3 className="font-semibold">Meal Plan</h3>
-            {/* Render meal plan details */}
+
+        <div className="space-y-4">
+          <h3 className="font-semibold">Meals</h3>
+          
+          {/* Breakfast Section */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <h4 className="text-sm font-medium">Breakfast</h4>
+              <div className="text-sm text-muted-foreground">
+                Target: {dailyPlan.mealPlan?.targetCalories ? Math.round(dailyPlan.mealPlan.targetCalories * 0.3) : 0} kcal
+              </div>
+            </div>
+            {dailyPlan.mealPlan?.meals
+              .filter(meal => meal.timeOfDay === 'breakfast')
+              .map(meal => (
+                <div key={meal.id} className="flex items-center justify-between pl-4 py-1">
+                  <div>
+                    <div className="text-sm">{meal.name}</div>
+                    <div className="text-xs text-muted-foreground">
+                      P: {meal.protein}g | C: {meal.carbs}g | F: {meal.fat}g
+                    </div>
+                  </div>
+                  <div className="text-sm">{meal.calories} kcal</div>
+                </div>
+              ))}
           </div>
-        )}
+
+          {/* Lunch Section */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <h4 className="text-sm font-medium">Lunch</h4>
+              <div className="text-sm text-muted-foreground">
+                Target: {dailyPlan.mealPlan?.targetCalories ? Math.round(dailyPlan.mealPlan.targetCalories * 0.35) : 0} kcal
+              </div>
+            </div>
+            {dailyPlan.mealPlan?.meals
+              .filter(meal => meal.timeOfDay === 'lunch')
+              .map(meal => (
+                <div key={meal.id} className="flex items-center justify-between pl-4 py-1">
+                  <div>
+                    <div className="text-sm">{meal.name}</div>
+                    <div className="text-xs text-muted-foreground">
+                      P: {meal.protein}g | C: {meal.carbs}g | F: {meal.fat}g
+                    </div>
+                  </div>
+                  <div className="text-sm">{meal.calories} kcal</div>
+                </div>
+              ))}
+          </div>
+
+          {/* Dinner Section */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <h4 className="text-sm font-medium">Dinner</h4>
+              <div className="text-sm text-muted-foreground">
+                Target: {dailyPlan.mealPlan?.targetCalories ? Math.round(dailyPlan.mealPlan.targetCalories * 0.35) : 0} kcal
+              </div>
+            </div>
+            {dailyPlan.mealPlan?.meals
+              .filter(meal => meal.timeOfDay === 'dinner')
+              .map(meal => (
+                <div key={meal.id} className="flex items-center justify-between pl-4 py-1">
+                  <div>
+                    <div className="text-sm">{meal.name}</div>
+                    <div className="text-xs text-muted-foreground">
+                      P: {meal.protein}g | C: {meal.carbs}g | F: {meal.fat}g
+                    </div>
+                  </div>
+                  <div className="text-sm">{meal.calories} kcal</div>
+                </div>
+              ))}
+          </div>
+
+          {/* Snacks Section */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <h4 className="text-sm font-medium">Snacks</h4>
+              <div className="text-sm text-muted-foreground">
+                Target: {dailyPlan.mealPlan?.targetCalories ? Math.round(dailyPlan.mealPlan.targetCalories * 0.1) : 0} kcal
+              </div>
+            </div>
+            {dailyPlan.mealPlan?.meals
+              .filter(meal => meal.timeOfDay === 'snack')
+              .map(meal => (
+                <div key={meal.id} className="flex items-center justify-between pl-4 py-1">
+                  <div>
+                    <div className="text-sm">{meal.name}</div>
+                    <div className="text-xs text-muted-foreground">
+                      P: {meal.protein}g | C: {meal.carbs}g | F: {meal.fat}g
+                    </div>
+                  </div>
+                  <div className="text-sm">{meal.calories} kcal</div>
+                </div>
+              ))}
+          </div>
+
+          {/* Daily Totals */}
+          <div className="pt-4 border-t">
+            <div className="flex items-center justify-between font-medium">
+              <span>Daily Totals</span>
+              <span>{dailyPlan.mealPlan?.totalCalories || 0} / {dailyPlan.mealPlan?.targetCalories || 0} kcal</span>
+            </div>
+            <div className="text-sm text-muted-foreground text-right">
+              P: {dailyPlan.mealPlan?.totalProtein || 0}g | 
+              C: {dailyPlan.mealPlan?.totalCarbs || 0}g | 
+              F: {dailyPlan.mealPlan?.totalFat || 0}g
+            </div>
+          </div>
+        </div>
       </CardContent>
     </Card>
   )
+
+  const handleAddFood = async () => {
+    try {
+      if (!newFood.name) {
+        setError('Please enter a food name')
+        return
+      }
+
+      await addFoodEntry({
+        ...newFood,
+        timestamp: new Date(),
+      } as FoodEntry)
+
+      // Refresh the daily entries
+      const updatedEntries = await getFoodEntriesByDate(selectedDate)
+      setDailyEntries(updatedEntries)
+      
+      // Reset form and close dialog
+      setNewFood({
+        name: '',
+        calories: 0,
+        protein: 0,
+        carbs: 0,
+        fat: 0,
+        servingSize: '1 serving'
+      })
+      setIsAddFoodOpen(false)
+    } catch (error) {
+      console.error('Error adding food entry:', error)
+      setError('Failed to add food entry')
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -203,26 +349,87 @@ export function NutritionTrackingComponent() {
           {renderNutritionSummary()}
           
           <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle>Food Log</CardTitle>
-                <div className="flex gap-2">
-                  <Input
-                    placeholder="Search foods..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-[200px]"
-                  />
-                  <Button size="icon" onClick={() => setIsScannerOpen(true)}>
-                    <Camera className="h-4 w-4" />
-                  </Button>
-                  <Button size="icon">
-                    <Search className="h-4 w-4" />
-                  </Button>
-                  <Button size="icon">
-                    <Plus className="h-4 w-4" />
-                  </Button>
-                </div>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle>Food Log</CardTitle>
+              <div className="flex items-center space-x-2">
+                <Input
+                  placeholder="Search foods..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-[200px]"
+                />
+                <Button variant="outline" size="icon" onClick={() => setIsScannerOpen(true)}>
+                  <Camera className="h-4 w-4" />
+                </Button>
+                <Dialog open={isAddFoodOpen} onOpenChange={setIsAddFoodOpen}>
+                  <DialogTrigger asChild>
+                    <Button size="icon">
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Add Food Entry</DialogTitle>
+                    </DialogHeader>
+                    <div className="grid gap-4">
+                      <div className="grid gap-2">
+                        <Label htmlFor="name">Food Name</Label>
+                        <Input
+                          id="name"
+                          value={newFood.name}
+                          onChange={(e) => setNewFood({ ...newFood, name: e.target.value })}
+                        />
+                      </div>
+                      <div className="grid gap-2">
+                        <Label htmlFor="servingSize">Serving Size</Label>
+                        <Input
+                          id="servingSize"
+                          value={newFood.servingSize}
+                          onChange={(e) => setNewFood({ ...newFood, servingSize: e.target.value })}
+                        />
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="grid gap-2">
+                          <Label htmlFor="calories">Calories</Label>
+                          <Input
+                            id="calories"
+                            type="number"
+                            value={newFood.calories}
+                            onChange={(e) => setNewFood({ ...newFood, calories: parseInt(e.target.value) || 0 })}
+                          />
+                        </div>
+                        <div className="grid gap-2">
+                          <Label htmlFor="protein">Protein (g)</Label>
+                          <Input
+                            id="protein"
+                            type="number"
+                            value={newFood.protein}
+                            onChange={(e) => setNewFood({ ...newFood, protein: parseInt(e.target.value) || 0 })}
+                          />
+                        </div>
+                        <div className="grid gap-2">
+                          <Label htmlFor="carbs">Carbs (g)</Label>
+                          <Input
+                            id="carbs"
+                            type="number"
+                            value={newFood.carbs}
+                            onChange={(e) => setNewFood({ ...newFood, carbs: parseInt(e.target.value) || 0 })}
+                          />
+                        </div>
+                        <div className="grid gap-2">
+                          <Label htmlFor="fat">Fat (g)</Label>
+                          <Input
+                            id="fat"
+                            type="number"
+                            value={newFood.fat}
+                            onChange={(e) => setNewFood({ ...newFood, fat: parseInt(e.target.value) || 0 })}
+                          />
+                        </div>
+                      </div>
+                      <Button onClick={handleAddFood}>Add Food</Button>
+                    </div>
+                  </DialogContent>
+                </Dialog>
               </div>
             </CardHeader>
             <CardContent>

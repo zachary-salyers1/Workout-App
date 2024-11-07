@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Bell, Calendar, ChevronRight, Dumbbell, Trophy, Users } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
@@ -19,12 +19,42 @@ import { useRouter } from 'next/navigation'
 import { WorkoutCalendar } from './workout-calendar'
 import { ThemeToggle } from "./theme-toggle"
 import { NutritionTrackingComponent } from "./nutrition-tracking"
+import { MealPlanSummaryCard } from "./meal-plan-summary"
 
 export function DashboardComponent() {
-  const { user, userProfile, workoutPlan, updateWorkoutPlan } = useAppContext()
+  const { user, userProfile, workoutPlan, getWorkoutAndMealPlan } = useAppContext()
   const [activeTab, setActiveTab] = useState("overview")
   const router = useRouter()
   const [selectedDate, setSelectedDate] = useState<Date | null>(null)
+  const [dailyPlanData, setDailyPlanData] = useState<{
+    workout: WorkoutPlan | null,
+    mealPlan: MealPlan | null
+  }>({ workout: null, mealPlan: null })
+
+  useEffect(() => {
+    const fetchDailyPlan = async () => {
+      try {
+        const today = new Date().toISOString().split('T')[0]
+        const plan = await getWorkoutAndMealPlan(today)
+        console.log('Fetched meal plan:', plan)
+        setDailyPlanData({
+          workout: plan.workout,
+          mealPlan: {
+            ...plan.mealPlan,
+            meals: plan.mealPlan?.meals || [],
+            targetCalories: plan.mealPlan?.targetCalories || 2000,
+            totalCalories: plan.mealPlan?.totalCalories || 0,
+            totalProtein: plan.mealPlan?.totalProtein || 0,
+            totalCarbs: plan.mealPlan?.totalCarbs || 0,
+            totalFat: plan.mealPlan?.totalFat || 0
+          }
+        })
+      } catch (error) {
+        console.error('Error fetching daily plan:', error)
+      }
+    }
+    fetchDailyPlan()
+  }, [getWorkoutAndMealPlan])
 
   if (!user) {
     return (
@@ -39,7 +69,7 @@ export function DashboardComponent() {
     try {
       await signOut(auth)
       // Clear the workout plan from local state
-      updateWorkoutPlan(null)
+      workoutPlan(null)
       // Redirect to home page or login page
       router.push('/')
     } catch (error) {
@@ -98,10 +128,27 @@ export function DashboardComponent() {
     // You might want to add additional logic here, such as fetching workout details for the selected date
   }
 
+  const renderMealPlanSummary = () => {
+    if (!dailyPlanData.mealPlan) return null
+
+    return (
+      <MealPlanSummaryCard 
+        mealPlan={dailyPlanData.mealPlan}
+        onViewFullPlan={() => setActiveTab("nutrition")}
+      />
+    )
+  }
+
   const renderOverview = () => (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
       {renderProfileSummary()}
       {renderTodaysWorkout()}
+      {dailyPlanData.mealPlan && (
+        <MealPlanSummaryCard 
+          mealPlan={dailyPlanData.mealPlan}
+          onViewFullPlan={() => setActiveTab("nutrition")}
+        />
+      )}
       <WorkoutCalendar onDateSelect={handleDateSelect} />
     </div>
   )
