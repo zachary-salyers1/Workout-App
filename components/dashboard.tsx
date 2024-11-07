@@ -17,6 +17,7 @@ import { signOut } from 'firebase/auth'
 import { auth } from '@/lib/firebase'
 import { useRouter } from 'next/navigation'
 import { WorkoutCalendar } from './workout-calendar'
+import { ThemeToggle } from "./theme-toggle"
 
 export function DashboardComponent() {
   const { user, userProfile, workoutPlan, updateWorkoutPlan } = useAppContext()
@@ -114,6 +115,7 @@ export function DashboardComponent() {
           )}
         </div>
         <div className="flex items-center space-x-4">
+          <ThemeToggle />
           <Button variant="outline" size="icon">
             <Bell className="h-4 w-4" />
           </Button>
