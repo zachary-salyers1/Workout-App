@@ -66,6 +66,12 @@ type UserProfile = {
     sleepQuality: string
     energyLevel: string
   }
+  dailyCalorieGoal?: number
+  macroTargets?: {
+    protein: number
+    carbs: number
+    fat: number
+  }
 }
 
 type AppContextType = {

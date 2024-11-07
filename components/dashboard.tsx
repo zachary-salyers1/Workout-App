@@ -18,6 +18,7 @@ import { auth } from '@/lib/firebase'
 import { useRouter } from 'next/navigation'
 import { WorkoutCalendar } from './workout-calendar'
 import { ThemeToggle } from "./theme-toggle"
+import { NutritionTrackingComponent } from "./nutrition-tracking"
 
 export function DashboardComponent() {
   const { user, userProfile, workoutPlan, updateWorkoutPlan } = useAppContext()
@@ -128,6 +129,7 @@ export function DashboardComponent() {
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="progress">Progress Tracking</TabsTrigger>
           <TabsTrigger value="workoutPlan">Workout Plan</TabsTrigger>
+          <TabsTrigger value="nutrition">Nutrition</TabsTrigger>
           <TabsTrigger value="community">Community</TabsTrigger>
           <TabsTrigger value="profile">Profile</TabsTrigger>
         </TabsList>
@@ -136,6 +138,7 @@ export function DashboardComponent() {
           <ProgressTrackingComponent selectedDate={selectedDate} onDateSelect={handleDateSelect} />
         </TabsContent>
         <TabsContent value="workoutPlan"><WorkoutPlanGeneratorComponent /></TabsContent>
+        <TabsContent value="nutrition"><NutritionTrackingComponent /></TabsContent>
         <TabsContent value="community"><CommunityLeaderboardsComponent /></TabsContent>
         <TabsContent value="profile"><UserProfileSetup /></TabsContent>
       </Tabs>
