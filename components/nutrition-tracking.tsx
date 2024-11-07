@@ -1,15 +1,16 @@
 "use client"
 
-import { useState } from "react"
-import { Search, Plus, Calendar, TrendingUp, Scale, Camera } from "lucide-react"
+import { useState, useEffect } from "react"
+import { Search, Plus, Calendar, TrendingUp, Scale, Camera, Pencil, Trash2 } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useAppContext } from "@/app/context/AppContext"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { FoodLabelScanner } from "./food-label-scanner"
+import { MealPlanner } from "./meal-planner"
 
 type FoodEntry = {
   id: string
@@ -31,33 +32,74 @@ type MeasurementEntry = {
 }
 
 export function NutritionTrackingComponent() {
-  const { userProfile } = useAppContext()
+  const { userProfile, foodEntries, addFoodEntry, updateFoodEntry, deleteFoodEntry, getFoodEntriesByDate, getWorkoutAndMealPlan } = useAppContext()
   const [searchTerm, setSearchTerm] = useState("")
-  const [foodEntries, setFoodEntries] = useState<FoodEntry[]>([])
   const [measurements, setMeasurements] = useState<MeasurementEntry[]>([])
-  const [selectedDate, setSelectedDate] = useState(new Date())
+  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0])
   const [isAddMeasurementOpen, setIsAddMeasurementOpen] = useState(false)
   const [newMeasurement, setNewMeasurement] = useState<Partial<MeasurementEntry>>({})
   const [isScannerOpen, setIsScannerOpen] = useState(false)
+  const [editingEntry, setEditingEntry] = useState<FoodEntry | null>(null)
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
+  const [dailyEntries, setDailyEntries] = useState<FoodEntry[]>([])
+  const [dailyPlan, setDailyPlan] = useState<{
+    workout: WorkoutPlan | null,
+    mealPlan: MealPlan | null
+  }>({ workout: null, mealPlan: null })
 
   const dailyCalorieGoal = userProfile?.dailyCalorieGoal || 2000
   const totalCalories = foodEntries.reduce((sum, entry) => sum + entry.calories, 0)
 
-  const searchFoods = async (query: string) => {
-    // Implement API call to food database
-    // This is where you'd integrate with a food database API
+  // Fetch entries when date changes
+  useEffect(() => {
+    const fetchDailyData = async () => {
+      try {
+        const [entries, plan] = await Promise.all([
+          getFoodEntriesByDate(selectedDate),
+          getWorkoutAndMealPlan(selectedDate)
+        ])
+        setDailyEntries(entries)
+        setDailyPlan(plan)
+      } catch (error) {
+        console.error('Error fetching daily data:', error)
+      }
+    }
+    fetchDailyData()
+  }, [selectedDate])
+
+  const handleScanComplete = async (nutritionData: ScannedNutrition) => {
     try {
-      const response = await fetch(`/api/search-foods?q=${query}`)
-      const data = await response.json()
-      return data
+      await addFoodEntry({
+        ...nutritionData,
+        date: selectedDate,
+        mealType: 'snack', // Default value, could add UI to select meal type
+        timestamp: new Date()
+      })
+      // Refresh daily entries
+      const updatedEntries = await getFoodEntriesByDate(selectedDate)
+      setDailyEntries(updatedEntries)
+      setIsScannerOpen(false)
     } catch (error) {
-      console.error('Error searching foods:', error)
-      return []
+      console.error('Error adding food entry:', error)
     }
   }
 
-  const addFoodEntry = (food: FoodEntry) => {
-    setFoodEntries([...foodEntries, { ...food, timestamp: new Date() }])
+  const handleEditEntry = async (entry: FoodEntry) => {
+    try {
+      await updateFoodEntry(entry.id, entry)
+      setEditingEntry(null)
+      setIsEditDialogOpen(false)
+    } catch (error) {
+      console.error('Error updating food entry:', error)
+    }
+  }
+
+  const handleDeleteEntry = async (id: string) => {
+    try {
+      await deleteFoodEntry(id)
+    } catch (error) {
+      console.error('Error deleting food entry:', error)
+    }
   }
 
   const addMeasurement = () => {
@@ -112,26 +154,44 @@ export function NutritionTrackingComponent() {
     </div>
   )
 
-  const handleScanComplete = (nutritionData: ScannedNutrition) => {
-    if (nutritionData.calories) {
-      const newEntry: FoodEntry = {
-        id: crypto.randomUUID(),
-        name: nutritionData.name || "Scanned Food Item",
-        calories: nutritionData.calories,
-        protein: nutritionData.protein || 0,
-        carbs: nutritionData.carbs || 0,
-        fat: nutritionData.fat || 0,
-        servingSize: nutritionData.servingSize || "1 serving",
-        timestamp: new Date()
-      }
-      
-      addFoodEntry(newEntry)
-      setIsScannerOpen(false)
-    }
-  }
+  // Add new section to render daily plan
+  const renderDailyPlan = () => (
+    <Card>
+      <CardHeader>
+        <CardTitle>Daily Plan</CardTitle>
+      </CardHeader>
+      <CardContent>
+        {dailyPlan.workout && (
+          <div className="mb-4">
+            <h3 className="font-semibold">Workout Plan</h3>
+            {/* Render workout details */}
+          </div>
+        )}
+        {dailyPlan.mealPlan && (
+          <div>
+            <h3 className="font-semibold">Meal Plan</h3>
+            {/* Render meal plan details */}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  )
 
   return (
     <div className="space-y-6">
+      <div className="flex items-center gap-4">
+        <Input
+          type="date"
+          value={selectedDate}
+          onChange={(e) => setSelectedDate(e.target.value)}
+        />
+      </div>
+      
+      <div className="grid gap-6 md:grid-cols-2">
+        {renderDailyPlan()}
+        <MealPlanner selectedDate={selectedDate} />
+      </div>
+
       <Tabs defaultValue="diary">
         <TabsList>
           <TabsTrigger value="diary">Food Diary</TabsTrigger>
@@ -168,17 +228,38 @@ export function NutritionTrackingComponent() {
             <CardContent>
               <div className="space-y-4">
                 {foodEntries.map((entry) => (
-                  <div key={entry.id} className="flex items-center justify-between">
+                  <div key={entry.id} className="flex items-center justify-between p-2 hover:bg-muted/50 rounded-lg">
                     <div>
                       <div className="font-medium">{entry.name}</div>
                       <div className="text-sm text-muted-foreground">
                         {entry.servingSize}
                       </div>
                     </div>
-                    <div className="text-right">
-                      <div>{entry.calories} kcal</div>
-                      <div className="text-sm text-muted-foreground">
-                        P: {entry.protein}g | C: {entry.carbs}g | F: {entry.fat}g
+                    <div className="flex items-center gap-4">
+                      <div className="text-right">
+                        <div>{entry.calories} kcal</div>
+                        <div className="text-sm text-muted-foreground">
+                          P: {entry.protein}g | C: {entry.carbs}g | F: {entry.fat}g
+                        </div>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => {
+                            setEditingEntry(entry)
+                            setIsEditDialogOpen(true)
+                          }}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleDeleteEntry(entry.id)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
                       </div>
                     </div>
                   </div>
@@ -277,11 +358,109 @@ export function NutritionTrackingComponent() {
         </TabsContent>
       </Tabs>
       <Dialog open={isScannerOpen} onOpenChange={setIsScannerOpen}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Scan Food Label</DialogTitle>
+            <DialogDescription>
+              Take a photo or upload an image of a nutrition label to automatically extract information
+            </DialogDescription>
+          </DialogHeader>
           <FoodLabelScanner
             onScanComplete={handleScanComplete}
             onClose={() => setIsScannerOpen(false)}
           />
+        </DialogContent>
+      </Dialog>
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Edit Food Entry</DialogTitle>
+            <DialogDescription>
+              Modify the details of your food entry
+            </DialogDescription>
+          </DialogHeader>
+          {editingEntry && (
+            <div className="grid gap-4 py-4">
+              <div className="grid gap-2">
+                <Label htmlFor="name">Food Name</Label>
+                <Input
+                  id="name"
+                  value={editingEntry.name}
+                  onChange={(e) => setEditingEntry({
+                    ...editingEntry,
+                    name: e.target.value
+                  })}
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="servingSize">Serving Size</Label>
+                <Input
+                  id="servingSize"
+                  value={editingEntry.servingSize}
+                  onChange={(e) => setEditingEntry({
+                    ...editingEntry,
+                    servingSize: e.target.value
+                  })}
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="calories">Calories</Label>
+                  <Input
+                    id="calories"
+                    type="number"
+                    value={editingEntry.calories}
+                    onChange={(e) => setEditingEntry({
+                      ...editingEntry,
+                      calories: parseInt(e.target.value) || 0
+                    })}
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="protein">Protein (g)</Label>
+                  <Input
+                    id="protein"
+                    type="number"
+                    value={editingEntry.protein}
+                    onChange={(e) => setEditingEntry({
+                      ...editingEntry,
+                      protein: parseInt(e.target.value) || 0
+                    })}
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="carbs">Carbs (g)</Label>
+                  <Input
+                    id="carbs"
+                    type="number"
+                    value={editingEntry.carbs}
+                    onChange={(e) => setEditingEntry({
+                      ...editingEntry,
+                      carbs: parseInt(e.target.value) || 0
+                    })}
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="fat">Fat (g)</Label>
+                  <Input
+                    id="fat"
+                    type="number"
+                    value={editingEntry.fat}
+                    onChange={(e) => setEditingEntry({
+                      ...editingEntry,
+                      fat: parseInt(e.target.value) || 0
+                    })}
+                  />
+                </div>
+              </div>
+              <Button 
+                onClick={() => handleEditEntry(editingEntry)}
+                className="mt-4"
+              >
+                Save Changes
+              </Button>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>

@@ -3,19 +3,19 @@
 import { useState, useRef } from "react"
 import { Camera, Upload } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { createWorker } from 'tesseract.js'
 import { BarcodeDetector } from 'barcode-detector'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 
 type ScannedNutrition = {
   calories?: number
   protein?: number
   carbs?: number
   fat?: number
-  servingSize?: string
   name?: string
-  barcode?: string
+  servingSize?: string
 }
 
 interface FoodLabelScannerProps {
@@ -30,6 +30,88 @@ export function FoodLabelScanner({ onScanComplete, onClose }: FoodLabelScannerPr
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [error, setError] = useState<string | null>(null)
 
+  const parseNutritionInfo = (text: string): ScannedNutrition => {
+    const nutrition: ScannedNutrition = {}
+    const lines = text.toLowerCase().split('\n')
+    
+    // Helper function to extract numeric value
+    const extractNumber = (str: string): number | undefined => {
+      const match = str.match(/(\d+(\.\d+)?)/);
+      return match ? parseFloat(match[1]) : undefined;
+    }
+
+    // Helper function to find line containing text
+    const findLine = (searchTerms: string[]): string | undefined => {
+      return lines.find(line => 
+        searchTerms.some(term => line.includes(term.toLowerCase()))
+      )
+    }
+
+    // Extract serving size
+    const servingSizeTerms = ['serving size', 'per serving', 'portion']
+    const servingSizeLine = findLine(servingSizeTerms)
+    if (servingSizeLine) {
+      nutrition.servingSize = servingSizeLine
+        .replace(/serving size:?/i, '')
+        .replace(/per serving:?/i, '')
+        .trim()
+    }
+
+    // Extract calories
+    const calorieTerms = ['calories', 'energy', 'kcal']
+    const calorieLine = findLine(calorieTerms)
+    if (calorieLine) {
+      nutrition.calories = extractNumber(calorieLine)
+    }
+
+    // Extract protein
+    const proteinTerms = ['protein']
+    const proteinLine = findLine(proteinTerms)
+    if (proteinLine) {
+      nutrition.protein = extractNumber(proteinLine)
+    }
+
+    // Extract carbohydrates
+    const carbTerms = ['carbohydrate', 'carbs', 'total carb']
+    const carbLine = findLine(carbTerms)
+    if (carbLine) {
+      nutrition.carbs = extractNumber(carbLine)
+    }
+
+    // Extract fat
+    const fatTerms = ['total fat', 'fat']
+    const fatLine = findLine(fatTerms)
+    if (fatLine) {
+      nutrition.fat = extractNumber(fatLine)
+    }
+
+    // Try to extract product name
+    for (let i = 0; i < Math.min(3, lines.length); i++) {
+      const line = lines[i].trim()
+      if (line && !line.includes('nutrition') && !line.includes('serving')) {
+        nutrition.name = line
+          .split(' ')
+          .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+          .join(' ')
+        break
+      }
+    }
+
+    // Validate and clean up the data
+    const cleanNumber = (value: number | undefined): number => {
+      if (typeof value !== 'number' || isNaN(value)) return 0
+      return Math.max(0, Math.round(value))
+    }
+
+    return {
+      ...nutrition,
+      calories: cleanNumber(nutrition.calories),
+      protein: cleanNumber(nutrition.protein),
+      carbs: cleanNumber(nutrition.carbs),
+      fat: cleanNumber(nutrition.fat)
+    }
+  }
+
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
     if (!file) return
@@ -37,42 +119,42 @@ export function FoodLabelScanner({ onScanComplete, onClose }: FoodLabelScannerPr
     try {
       setIsScanning(true)
       setError(null)
+      setScanProgress(10)
       
       // Create preview
       const preview = URL.createObjectURL(file)
       setPreviewUrl(preview)
+      setScanProgress(30)
 
       // Process image with Tesseract OCR
       const worker = await createWorker()
-      await worker.loadLanguage('eng')
-      await worker.initialize('eng')
-
-      worker.setParameters({
-        tessedit_char_whitelist: '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz ',
+      
+      // Configure Tesseract for better nutrition label recognition
+      await worker.setParameters({
+        tessedit_char_whitelist: '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz .,%()/',
+        tessedit_pageseg_mode: '6',
+        preserve_interword_spaces: '1',
       })
 
       const { data: { text } } = await worker.recognize(file)
       await worker.terminate()
-
-      // Try to detect barcode
-      let barcode = null
-      try {
-        const barcodeDetector = new BarcodeDetector()
-        const barcodes = await barcodeDetector.detect(await createImageBitmap(file))
-        if (barcodes.length > 0) {
-          barcode = barcodes[0].rawValue
-        }
-      } catch (e) {
-        console.warn('Barcode detection not supported or failed:', e)
-      }
+      setScanProgress(90)
 
       // Parse nutrition information from the text
-      const nutritionData = parseNutritionInfo(text, barcode)
-      onScanComplete(nutritionData)
+      const nutritionData = parseNutritionInfo(text)
+      setScanProgress(100)
+
+      // Only complete if we found at least some nutritional data
+      if (nutritionData.calories || nutritionData.protein || 
+          nutritionData.carbs || nutritionData.fat) {
+        onScanComplete(nutritionData)
+      } else {
+        setError('Could not detect nutrition information. Please try again or enter manually.')
+      }
 
     } catch (err) {
       console.error('Error scanning food label:', err)
-      setError('Failed to scan food label. Please try again.')
+      setError('Failed to scan food label. Please try again or enter manually.')
     } finally {
       setIsScanning(false)
       if (previewUrl) {
@@ -81,50 +163,13 @@ export function FoodLabelScanner({ onScanComplete, onClose }: FoodLabelScannerPr
     }
   }
 
-  const parseNutritionInfo = (text: string, barcode?: string | null): ScannedNutrition => {
-    const nutrition: ScannedNutrition = { barcode: barcode || undefined }
-    
-    // Extract serving size
-    const servingSizeMatch = text.match(/serving size[:\s]+([^\n]+)/i)
-    if (servingSizeMatch) {
-      nutrition.servingSize = servingSizeMatch[1].trim()
-    }
-
-    // Extract calories
-    const caloriesMatch = text.match(/calories[:\s]+(\d+)/i)
-    if (caloriesMatch) {
-      nutrition.calories = parseInt(caloriesMatch[1])
-    }
-
-    // Extract protein
-    const proteinMatch = text.match(/protein[:\s]+(\d+)g/i)
-    if (proteinMatch) {
-      nutrition.protein = parseInt(proteinMatch[1])
-    }
-
-    // Extract carbs
-    const carbsMatch = text.match(/carbohydrate[s]?[:\s]+(\d+)g/i)
-    if (carbsMatch) {
-      nutrition.carbs = parseInt(carbsMatch[1])
-    }
-
-    // Extract fat
-    const fatMatch = text.match(/fat[:\s]+(\d+)g/i)
-    if (fatMatch) {
-      nutrition.fat = parseInt(fatMatch[1])
-    }
-
-    // Try to extract product name
-    const lines = text.split('\n')
-    nutrition.name = lines[0].trim() // Usually the product name is at the top
-
-    return nutrition
-  }
-
   return (
     <Card className="w-full max-w-md mx-auto">
       <CardHeader>
         <CardTitle>Scan Food Label</CardTitle>
+        <CardDescription>
+          Take a photo or upload an image of a nutrition label to automatically extract information
+        </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="flex flex-col items-center gap-4">
